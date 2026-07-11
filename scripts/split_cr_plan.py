@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import argparse
+from pathlib import Path
 import re
 
 
@@ -17,6 +19,11 @@ PHASE_DIRECTORIES = {
 PHASE_PATTERN = re.compile(r"^## (Phase .+)$", re.MULTILINE)
 TASK_PATTERN = re.compile(r"^### (CR-\d{3})$", re.MULTILINE)
 SUMMARY_PATTERN = re.compile(r"^## Summary$", re.MULTILINE)
+LEGACY_POINTER = (
+    "# Ecommerce CR Execution Plan\n\n"
+    "The execution backlog has moved to [ecommerce-cr/README.md](ecommerce-cr/README.md).\n\n"
+    "Individual CR files are the source of truth.\n"
+)
 
 
 @dataclass(frozen=True)
@@ -73,3 +80,49 @@ def parse_master(text: str) -> tuple[list[Phase], str]:
         phases.append(Phase(title=title, directory=directory, tasks=tuple(tasks)))
 
     return phases, _normalize_body(text[summary_match.start() :])
+
+
+def _task_document(phase: Phase, task: CRTask) -> str:
+    return f"# {task.identifier}\n\n<!-- phase: {phase.directory} -->\n\n{task.body}"
+
+
+def _index_document(phases: list[Phase], summary: str) -> str:
+    lines = ["# Ecommerce CR Execution Plan", ""]
+    for phase in phases:
+        lines.extend((f"## {phase.title}", ""))
+        for task in phase.tasks:
+            lines.append(f"- [{task.identifier}]({phase.directory}/{task.identifier}.md)")
+        lines.append("")
+    return "\n".join(lines) + summary
+
+
+def write_split_plan(source: Path, target: Path) -> None:
+    source_text = source.read_text()
+    if source_text == LEGACY_POINTER and (target / "README.md").is_file():
+        return
+
+    phases, summary = parse_master(source_text)
+    target.mkdir(parents=True, exist_ok=True)
+    for stale_file in target.glob("phase-*/CR-*.md"):
+        stale_file.unlink()
+
+    for phase in phases:
+        phase_directory = target / phase.directory
+        phase_directory.mkdir(parents=True, exist_ok=True)
+        for task in phase.tasks:
+            (phase_directory / f"{task.identifier}.md").write_text(_task_document(phase, task))
+
+    (target / "README.md").write_text(_index_document(phases, summary))
+    source.write_text(LEGACY_POINTER)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Split the ecommerce master CR plan into individual files.")
+    parser.add_argument("source", type=Path)
+    parser.add_argument("target", type=Path)
+    arguments = parser.parse_args()
+    write_split_plan(arguments.source, arguments.target)
+
+
+if __name__ == "__main__":
+    main()
