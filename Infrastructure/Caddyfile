@@ -1,0 +1,10 @@
+{$COMMERCE_HOST:commerce.local} {
+	tls /certs/commerce.local.pem /certs/commerce.local-key.pem
+	encode zstd gzip
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+	}
+	reverse_proxy api:8080
+}
