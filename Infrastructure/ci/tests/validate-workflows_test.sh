@@ -6,6 +6,7 @@ validator="$repo_root/Infrastructure/ci/validate-workflows.sh"
 workflow_dir="$repo_root/.github/workflows"
 pr_policy_workflow="$workflow_dir/pr-policy.yml"
 backend_workflow="$workflow_dir/backend.yml"
+ios_workflow="$workflow_dir/ios.yml"
 invalid_workflow="$workflow_dir/invalid-workflow-fixture.yml"
 invalid_shell="$repo_root/Infrastructure/ci/invalid-shell-fixture.sh"
 created_github_dir=false
@@ -38,6 +39,39 @@ fi
 
 if [[ ! -f "$backend_workflow" ]]; then
   echo "required workflow is missing: .github/workflows/backend.yml" >&2
+  exit 1
+fi
+
+if [[ ! -f "$ios_workflow" ]]; then
+  echo "required workflow is missing: .github/workflows/ios.yml" >&2
+  exit 1
+fi
+
+for required_text in \
+  'workflow_call:' \
+  'name: iOS' \
+  'runs-on: [self-hosted, macOS, ARM64, "${{ '\''commerce-ios'\'' }}"]' \
+  'timeout-minutes: 45' \
+  'group: ios-${{ github.event.pull_request.number || github.ref }}' \
+  'Infrastructure/ci/preflight-ios-runner.sh' \
+  'xcrun simctl boot "iPhone 17"' \
+  'mise exec -- swiftlint lint --strict' \
+  'make ios-test-packages' \
+  '-scheme CommerceApp' \
+  "-destination 'platform=iOS Simulator,name=iPhone 17'" \
+  '-resultBundlePath TestResults/CommerceApp.xcresult' \
+  'make ios-build-unsigned' \
+  'if: failure()' \
+  'retention-days: 7'; do
+  if ! grep -Fq -- "$required_text" "$ios_workflow"; then
+    echo "ios.yml is missing required text: $required_text" >&2
+    exit 1
+  fi
+done
+
+if grep -E 'uses: [^[:space:]]+@' "$ios_workflow" \
+  | grep -Evq 'uses: [^[:space:]]+@[0-9a-f]{40}$'; then
+  echo "ios.yml actions must be pinned by full commit SHA" >&2
   exit 1
 fi
 
