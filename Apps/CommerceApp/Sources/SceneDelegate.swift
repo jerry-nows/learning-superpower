@@ -3,7 +3,7 @@ import UIKit
 @MainActor
 final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
-    private var appCoordinator: AppCoordinator?
+    private var appCoordinator: (any ApplicationCoordinating)?
 
     func scene(
         _ scene: UIScene,
