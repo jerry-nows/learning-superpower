@@ -24,6 +24,9 @@ case "${MOCK_CURL_MODE:-up}" in
   starting)
     printf '{ "id": "node-1", "status" : "STARTING", "version": "2026.1" }\n'
     ;;
+  secret_status)
+    printf '{ "id": "node-1", "status" : "secret-token-value", "version": "2026.1" }\n'
+    ;;
   up)
     printf '{\n  "id": "node-1",\n  "status" : "UP",\n  "version": "2026.1"\n}\n'
     ;;
@@ -65,7 +68,10 @@ MOCK_CURL_MODE="unreachable"
 assert_failure "Unable to reach SonarQube"
 
 MOCK_CURL_MODE="starting"
-assert_failure "SonarQube is not UP (reported status: STARTING)"
+assert_failure "SonarQube is not UP"
+
+MOCK_CURL_MODE="secret_status"
+assert_failure "SonarQube is not UP"
 
 MOCK_CURL_MODE="up"
 output="$(run_preflight 2>&1)" || fail "UP status was rejected: $output"

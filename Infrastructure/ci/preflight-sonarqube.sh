@@ -18,6 +18,6 @@ fi
 
 status="$(printf '%s\n' "$response" | sed -nE 's/.*"status"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' | head -n 1)"
 [[ -n "$status" ]] || fail "SonarQube returned an invalid system status response"
-[[ "$status" == "UP" ]] || fail "SonarQube is not UP (reported status: $status)"
+[[ "$status" == "UP" ]] || fail "SonarQube is not UP"
 
 echo "SonarQube preflight passed."
