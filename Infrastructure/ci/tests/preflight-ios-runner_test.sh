@@ -15,6 +15,8 @@ write_fixture_commands() {
   local architecture=${1:-arm64}
   local xcode_version=${2:-26.6}
   local simulator_name=${3:-iPhone 17}
+  FIXTURE_TUIST_VERSION=${4:-4.202.1}
+  FIXTURE_SWIFTLINT_VERSION=${5:-0.65.0}
   local bin_dir="$FIXTURE_DIR/bin"
 
   rm -rf "$bin_dir"
@@ -34,11 +36,19 @@ EOF
 #!/usr/bin/env bash
 printf 'mise %s\n' "$*" >>"$FIXTURE_LOG"
 case "${1:-}" in
-  install) exit 0 ;;
+  install)
+    [[ "${FIXTURE_FAILURE:-}" != mise-install ]] || { echo 'fixture mise install failure' >&2; exit 42; }
+    ;;
   exec)
     case "${3:-}" in
-      tuist) printf '4.95.0\n' ;;
-      swiftlint) printf '0.59.1\n' ;;
+      tuist)
+        [[ "${FIXTURE_FAILURE:-}" != tuist-version ]] || { echo 'fixture tuist failure' >&2; exit 42; }
+        printf '%s\n' "$FIXTURE_TUIST_VERSION"
+        ;;
+      swiftlint)
+        [[ "${FIXTURE_FAILURE:-}" != swiftlint-version ]] || { echo 'fixture swiftlint failure' >&2; exit 42; }
+        printf '%s\n' "$FIXTURE_SWIFTLINT_VERSION"
+        ;;
       *) exit 2 ;;
     esac
     ;;
@@ -48,11 +58,13 @@ EOF
   cat >"$bin_dir/docker" <<'EOF'
 #!/usr/bin/env bash
 printf 'docker %s\n' "$*" >>"$FIXTURE_LOG"
+[[ "${FIXTURE_FAILURE:-}" != docker-info ]] || { echo 'fixture docker failure' >&2; exit 42; }
 [[ "${1:-}" == info ]]
 EOF
   cat >"$bin_dir/xcrun" <<EOF
 #!/usr/bin/env bash
 printf 'xcrun %s\n' "\$*" >>"\$FIXTURE_LOG"
+[[ "\${FIXTURE_FAILURE:-}" != xcrun-list ]] || { echo 'fixture xcrun failure' >&2; exit 42; }
 printf '%s\n' '== Devices ==' '-- iOS 26.6 --' '    $simulator_name (00000000-0000-0000-0000-000000000000) (Shutdown)'
 EOF
   chmod +x "$bin_dir"/*
@@ -62,6 +74,9 @@ run_preflight() {
   local bin_dir="$FIXTURE_DIR/bin"
   PATH="$bin_dir:$PATH" \
     FIXTURE_LOG="$FIXTURE_DIR/commands.log" \
+    FIXTURE_FAILURE="${FIXTURE_FAILURE:-}" \
+    FIXTURE_TUIST_VERSION="$FIXTURE_TUIST_VERSION" \
+    FIXTURE_SWIFTLINT_VERSION="$FIXTURE_SWIFTLINT_VERSION" \
     XCODEBUILD_BIN="$bin_dir/xcodebuild" \
     MISE_BIN="$bin_dir/mise" \
     DOCKER_BIN="$bin_dir/docker" \
@@ -100,5 +115,18 @@ assert_fails_with "Xcode 26.6"
 
 write_fixture_commands arm64 26.6 "iPhone 16"
 assert_fails_with "iPhone 17"
+
+write_fixture_commands arm64 26.6 "iPhone 17" 4.201.0
+assert_fails_with "Tuist 4.202.1"
+
+write_fixture_commands arm64 26.6 "iPhone 17" 4.202.1 0.64.0
+assert_fails_with "SwiftLint 0.65.0"
+
+write_fixture_commands
+FIXTURE_FAILURE=mise-install assert_fails_with "mise install failed; run 'mise install'"
+FIXTURE_FAILURE=tuist-version assert_fails_with "Unable to read Tuist version; run 'mise install tuist'"
+FIXTURE_FAILURE=swiftlint-version assert_fails_with "Unable to read SwiftLint version; run 'mise install swiftlint'"
+FIXTURE_FAILURE=docker-info assert_fails_with "Docker is unavailable; start Docker Desktop"
+FIXTURE_FAILURE=xcrun-list assert_fails_with "Unable to list available Simulators; verify Xcode command-line tools"
 
 echo "PASS: iOS runner preflight fixtures"
