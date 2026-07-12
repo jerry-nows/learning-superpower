@@ -157,7 +157,7 @@
 - **Total number of tasks:** 128
 - **Estimated total implementation time:** 1730 minutes (28.8 engineer-hours), excluding review and CI wait time.
 - **Critical path:** Foundation API/TLS (CR-001 → CR-006 → CR-007 → CR-008 → CR-009 → CR-010 → CR-011 → CR-013 → CR-016 → CR-017), iOS composition (CR-019 → CR-021 → CR-022 → CR-024 → CR-025 → CR-034 → CR-035), then feature chains Auth → Catalog → Detail → Checkout → CI (CR-037 → CR-054 → CR-055 → CR-068 → CR-069 → CR-078 → CR-079 → CR-095 → CR-096 → CR-111 → CR-112 → CR-113).
-- **Parallelizable tasks:** CR-001, CR-002. Particularly useful parallel groups are backend/iOS work within phases 3–6 and UI-test/security-workflow tasks in phase 7.
+- **Parallelizable tasks:** CR-001, CR-002, CR-004, CR-006, CR-012, CR-013, CR-019, CR-020, CR-022, CR-023, CR-024, CR-026, CR-029, CR-030, CR-031, CR-039, CR-041, CR-043, CR-048, CR-049, CR-050, CR-056, CR-057, CR-083, CR-085, CR-116, CR-117, CR-120, CR-121, CR-122, CR-123, CR-126.
 
 ## Duration Verification
 
