@@ -31,6 +31,11 @@ playground.xcworkspace
 
 .build/
 
+# Tuist generated projects and workspace
+Commerce.xcworkspace/
+Apps/CommerceApp/CommerceApp.xcodeproj/
+Apps/CommerceApp/Derived/
+
 # CocoaPods
 #
 # We recommend against adding the Pods directory to your .gitignore. However

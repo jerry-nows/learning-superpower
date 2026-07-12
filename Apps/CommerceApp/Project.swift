@@ -3,6 +3,18 @@ import ProjectDescription
 let project = Project(
     name: "CommerceApp",
     organizationName: "Jerry Nows",
+    packages: [
+        .local(path: "../../Packages/Core"),
+        .local(path: "../../Packages/DesignSystem"),
+        .remote(
+            url: "https://github.com/hmlongco/Factory.git",
+            requirement: .upToNextMajor(from: "3.3.1")
+        ),
+        .remote(
+            url: "https://github.com/quickbirdstudios/XCoordinator.git",
+            requirement: .upToNextMajor(from: "2.2.1")
+        )
+    ],
     settings: .settings(
         base: [
             "SWIFT_STRICT_CONCURRENCY": "complete",
@@ -18,7 +30,15 @@ let project = Project(
             deploymentTargets: .iOS("17.0"),
             infoPlist: .file(path: "Resources/Info.plist"),
             sources: ["Sources/**"],
-            resources: ["Resources/**"]
+            resources: [
+                .glob(pattern: "Resources/**", excluding: ["Resources/Info.plist"])
+            ],
+            dependencies: [
+                .package(product: "Core"),
+                .package(product: "DesignSystem"),
+                .package(product: "FactoryKit"),
+                .package(product: "XCoordinator")
+            ]
         ),
         .target(
             name: "CommerceAppTests",
