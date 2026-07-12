@@ -10,6 +10,7 @@ excluded:
   - .build
   - .worktrees
   - DerivedData
+  - Packages/**/.build
   - Tuist/.build
 
 opt_in_rules:
