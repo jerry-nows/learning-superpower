@@ -5,6 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 validator="$repo_root/Infrastructure/ci/validate-workflows.sh"
 workflow_dir="$repo_root/.github/workflows"
 pr_policy_workflow="$workflow_dir/pr-policy.yml"
+backend_workflow="$workflow_dir/backend.yml"
 invalid_workflow="$workflow_dir/invalid-workflow-fixture.yml"
 invalid_shell="$repo_root/Infrastructure/ci/invalid-shell-fixture.sh"
 created_github_dir=false
@@ -32,6 +33,41 @@ mkdir -p "$workflow_dir"
 
 if [[ ! -f "$pr_policy_workflow" ]]; then
   echo "required workflow is missing: .github/workflows/pr-policy.yml" >&2
+  exit 1
+fi
+
+if [[ ! -f "$backend_workflow" ]]; then
+  echo "required workflow is missing: .github/workflows/backend.yml" >&2
+  exit 1
+fi
+
+for required_text in \
+  'workflow_call:' \
+  'runs-on: ubuntu-24.04' \
+  'name: Backend' \
+  'working-directory: Backend' \
+  'go-version-file: Backend/go.mod' \
+  'cache: true' \
+  'gofmt -l' \
+  'go vet ./...' \
+  'honnef.co/go/tools/cmd/staticcheck@2025.1.1' \
+  'staticcheck ./...' \
+  'go test -race -coverprofile=coverage.out ./...' \
+  'path: Backend/coverage.out'; do
+  if ! grep -Fq "$required_text" "$backend_workflow"; then
+    echo "backend.yml is missing required text: $required_text" >&2
+    exit 1
+  fi
+done
+
+if grep -Fq 'gofmt -w' "$backend_workflow"; then
+  echo "backend.yml must check formatting without rewriting sources" >&2
+  exit 1
+fi
+
+if grep -E 'uses: [^[:space:]]+@' "$backend_workflow" \
+  | grep -Evq 'uses: [^[:space:]]+@[0-9a-f]{40}$'; then
+  echo "backend.yml actions must be pinned by full commit SHA" >&2
   exit 1
 fi
 
