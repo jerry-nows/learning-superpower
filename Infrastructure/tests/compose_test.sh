@@ -18,4 +18,9 @@ services = config["services"]
 assert "ports" not in services["api"]
 assert len(services["caddy"]["ports"]) == 1
 assert config["networks"]["backend"]["internal"] is True
+assert config["networks"]["edge"].get("internal", False) is False
+assert set(services["caddy"]["networks"]) == {"backend", "edge"}
+assert all("edge" not in service.get("networks", {}) for name, service in services.items() if name != "caddy")
+redis_healthcheck = services["redis"]["healthcheck"]["test"][-1]
+assert "-a $${REDIS_PASSWORD}" in redis_healthcheck, redis_healthcheck
 '
