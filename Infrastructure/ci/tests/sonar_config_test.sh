@@ -31,13 +31,18 @@ property_values() {
   ' "$config"
 }
 
+property_count() {
+  local key="$1"
+  property_values "$key" | awk 'END { print NR }'
+}
+
 assert_property() {
   local key="$1"
   local expected="$2"
   local values
   local count
   values="$(property_values "$key")"
-  count="$(property_values "$key" | awk 'END { print NR }')"
+  count="$(property_count "$key")"
   [[ "$count" == 1 ]] || fail "$key must have exactly one assignment (found $count)"
   [[ "$values" == "$expected" ]] || fail "$key has invalid effective value: $values"
 }
@@ -82,9 +87,9 @@ for pattern in \
   esac
 done
 
-if grep -Eiq '^[[:space:]]*sonar\.(host\.url|token|login)[[:space:]]*=' "$config"; then
-  fail 'Sonar URL or credentials must not be embedded'
-fi
+for forbidden_key in sonar.host.url sonar.token sonar.login sonar.password; do
+  [[ "$(property_count "$forbidden_key")" == 0 ]] || fail "$forbidden_key must not be embedded"
+done
 
 if [[ "${SONAR_CONFIG_SKIP_REGRESSIONS:-0}" != 1 ]]; then
   temp_dir="$(mktemp -d)"
@@ -128,6 +133,18 @@ if [[ "${SONAR_CONFIG_SKIP_REGRESSIONS:-0}" != 1 ]]; then
   cp "$config" "$temp_dir/continued-property.properties"
   printf '%s\n' "sonar.projectKey\\" '=attacker-override' >> "$temp_dir/continued-property.properties"
   assert_rejected "$temp_dir/continued-property.properties" 'continued property'
+
+  for forbidden_key in sonar.token sonar.login sonar.host.url; do
+    colon_fixture="$temp_dir/${forbidden_key}.colon.properties"
+    cp "$config" "$colon_fixture"
+    printf '%s:%s\n' "$forbidden_key" 'secret' >> "$colon_fixture"
+    assert_rejected "$colon_fixture" "$forbidden_key with colon separator"
+
+    whitespace_fixture="$temp_dir/${forbidden_key}.whitespace.properties"
+    cp "$config" "$whitespace_fixture"
+    printf '%s %s\n' "$forbidden_key" 'secret' >> "$whitespace_fixture"
+    assert_rejected "$whitespace_fixture" "$forbidden_key with whitespace separator"
+  done
 fi
 
 printf 'PASS: SonarQube project mapping is valid\n'
