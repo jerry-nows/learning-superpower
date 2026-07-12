@@ -30,6 +30,7 @@ jobs:
       - name: Generate Swift coverage
         run: |
           mkdir -p Build/coverage Build/reports
+          rm -rf Build/coverage/CommerceApp.xcresult
           xcodebuild -workspace Commerce.xcworkspace \
             -scheme CommerceApp \
             -destination 'platform=iOS Simulator,name=iPhone 17' \
@@ -37,28 +38,10 @@ jobs:
             -resultBundlePath Build/coverage/CommerceApp.xcresult \
             test CODE_SIGNING_ALLOWED=NO
       - name: Convert Swift coverage for SonarQube
-        shell: bash
-        run: |
-          set -euo pipefail
-          result_bundle=Build/coverage/CommerceApp.xcresult
-          report=Build/reports/swift-coverage.xml
-
-          {
-            printf '%s\n' '<coverage version="1">'
-            xcrun xccov view --archive --file-list "$result_bundle" |
-            while IFS= read -r source_file; do
-              escaped_file="$(printf '%s' "$source_file" | sed \
-                -e 's/&/\&amp;/g' -e 's/"/\&quot;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')"
-              printf '  <file path="%s">\n' "$escaped_file"
-              xcrun xccov view --archive --file "$source_file" "$result_bundle" |
-                sed -n \
-                  -e 's/^[[:space:]]*\([0-9][0-9]*\): 0.*$/    <lineToCover lineNumber="\1" covered="false"\/>/p' \
-                  -e 's/^[ ]*\([0-9]\+\): [1-9][0-9]*.*$/<lineToCover lineNumber="\1" covered="true"\/>/p'
-              printf '%s\n' '  </file>'
-            done
-            printf '%s\n' '</coverage>'
-          } > "$report"
-          test "$(grep -c '<lineToCover ' "$report")" -gt 0
+        run: >-
+          Infrastructure/ci/xccov-to-sonarqube.sh
+          Build/coverage/CommerceApp.xcresult
+          Build/reports/swift-coverage.xml
       - name: Scan and wait for Quality Gate
         uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995
         env:

@@ -69,8 +69,8 @@ for required_text in \
   'go test -race -coverprofile=coverage.out ./...' \
   '-enableCodeCoverage YES' \
   '-resultBundlePath Build/coverage/CommerceApp.xcresult' \
-  'xcrun xccov view --archive --file-list' \
-  'xcrun xccov view --archive --file' \
+  'rm -rf Build/coverage/CommerceApp.xcresult' \
+  'Infrastructure/ci/xccov-to-sonarqube.sh' \
   'Build/reports/swift-coverage.xml' \
   'uses: SonarSource/sonarqube-scan-action@' \
   '-Dsonar.qualitygate.wait=true'; do
