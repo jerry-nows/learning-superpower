@@ -8,6 +8,7 @@ pr_policy_workflow="$workflow_dir/pr-policy.yml"
 backend_workflow="$workflow_dir/backend.yml"
 ios_workflow="$workflow_dir/ios.yml"
 security_workflow="$workflow_dir/security.yml"
+quality_workflow="$workflow_dir/quality.yml"
 invalid_workflow="$workflow_dir/invalid-workflow-fixture.yml"
 invalid_shell="$repo_root/Infrastructure/ci/invalid-shell-fixture.sh"
 created_github_dir=false
@@ -50,6 +51,53 @@ fi
 
 if [[ ! -f "$security_workflow" ]]; then
   echo "required workflow is missing: .github/workflows/security.yml" >&2
+  exit 1
+fi
+
+if [[ ! -f "$quality_workflow" ]]; then
+  echo "required workflow is missing: .github/workflows/quality.yml" >&2
+  exit 1
+fi
+
+for required_text in \
+  'workflow_call:' \
+  'name: SonarQube' \
+  'runs-on: [self-hosted, macOS, ARM64, "${{ '\''commerce-ios'\'' }}"]' \
+  'SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}' \
+  'SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}' \
+  'Infrastructure/ci/preflight-sonarqube.sh' \
+  'go test -race -coverprofile=coverage.out ./...' \
+  '-enableCodeCoverage YES' \
+  '-resultBundlePath Build/coverage/CommerceApp.xcresult' \
+  'xcrun xccov view --archive --file-list' \
+  'xcrun xccov view --archive --file' \
+  'Build/reports/swift-coverage.xml' \
+  'uses: SonarSource/sonarqube-scan-action@' \
+  '-Dsonar.qualitygate.wait=true'; do
+  if ! grep -Fq -- "$required_text" "$quality_workflow"; then
+    echo "quality.yml is missing required text: $required_text" >&2
+    exit 1
+  fi
+done
+
+if grep -E 'uses: [^[:space:]]+@' "$quality_workflow" \
+  | grep -Evq 'uses: [^[:space:]]+@[0-9a-f]{40}$'; then
+  echo "quality.yml actions must be pinned by full commit SHA" >&2
+  exit 1
+fi
+
+if [[ "$(grep -Fc 'SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}' "$quality_workflow")" -ne 2 ]]; then
+  echo "quality.yml must scope SONAR_TOKEN to the preflight and scanner environments" >&2
+  exit 1
+fi
+
+if grep -Eq '(^|[[:space:]])echo[^#]*(SONAR_TOKEN|secrets\.SONAR_TOKEN)' "$quality_workflow"; then
+  echo "quality.yml must never echo the SonarQube token" >&2
+  exit 1
+fi
+
+if grep -Eq -- '-Dsonar\.(token|login|password)=' "$quality_workflow"; then
+  echo "quality.yml must pass SonarQube credentials only through the environment" >&2
   exit 1
 fi
 

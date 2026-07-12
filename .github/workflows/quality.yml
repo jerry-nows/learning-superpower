@@ -1,0 +1,68 @@
+---
+name: Quality
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  sonarqube:
+    name: SonarQube
+    runs-on: [self-hosted, macOS, ARM64, "${{ 'commerce-ios' }}"]
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+      - name: Preflight SonarQube
+        env:
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: Infrastructure/ci/preflight-sonarqube.sh
+      - name: Generate Go coverage
+        working-directory: Backend
+        run: mise exec -- go test -race -coverprofile=coverage.out ./...
+      - name: Generate Xcode workspace
+        run: make ios-generate
+      - name: Generate Swift coverage
+        run: |
+          mkdir -p Build/coverage Build/reports
+          xcodebuild -workspace Commerce.xcworkspace \
+            -scheme CommerceApp \
+            -destination 'platform=iOS Simulator,name=iPhone 17' \
+            -enableCodeCoverage YES \
+            -resultBundlePath Build/coverage/CommerceApp.xcresult \
+            test CODE_SIGNING_ALLOWED=NO
+      - name: Convert Swift coverage for SonarQube
+        shell: bash
+        run: |
+          set -euo pipefail
+          result_bundle=Build/coverage/CommerceApp.xcresult
+          report=Build/reports/swift-coverage.xml
+
+          {
+            printf '%s\n' '<coverage version="1">'
+            xcrun xccov view --archive --file-list "$result_bundle" |
+            while IFS= read -r source_file; do
+              escaped_file="$(printf '%s' "$source_file" | sed \
+                -e 's/&/\&amp;/g' -e 's/"/\&quot;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')"
+              printf '  <file path="%s">\n' "$escaped_file"
+              xcrun xccov view --archive --file "$source_file" "$result_bundle" |
+                sed -n \
+                  -e 's/^[[:space:]]*\([0-9][0-9]*\): 0.*$/    <lineToCover lineNumber="\1" covered="false"\/>/p' \
+                  -e 's/^[ ]*\([0-9]\+\): [1-9][0-9]*.*$/<lineToCover lineNumber="\1" covered="true"\/>/p'
+              printf '%s\n' '  </file>'
+            done
+            printf '%s\n' '</coverage>'
+          } > "$report"
+          test "$(grep -c '<lineToCover ' "$report")" -gt 0
+      - name: Scan and wait for Quality Gate
+        uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995
+        env:
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: -Dsonar.qualitygate.wait=true
