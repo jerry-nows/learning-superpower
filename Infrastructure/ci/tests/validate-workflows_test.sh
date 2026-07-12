@@ -7,6 +7,7 @@ workflow_dir="$repo_root/.github/workflows"
 pr_policy_workflow="$workflow_dir/pr-policy.yml"
 backend_workflow="$workflow_dir/backend.yml"
 ios_workflow="$workflow_dir/ios.yml"
+security_workflow="$workflow_dir/security.yml"
 invalid_workflow="$workflow_dir/invalid-workflow-fixture.yml"
 invalid_shell="$repo_root/Infrastructure/ci/invalid-shell-fixture.sh"
 created_github_dir=false
@@ -44,6 +45,41 @@ fi
 
 if [[ ! -f "$ios_workflow" ]]; then
   echo "required workflow is missing: .github/workflows/ios.yml" >&2
+  exit 1
+fi
+
+if [[ ! -f "$security_workflow" ]]; then
+  echo "required workflow is missing: .github/workflows/security.yml" >&2
+  exit 1
+fi
+
+for required_text in \
+  'workflow_call:' \
+  'runs-on: ubuntu-24.04' \
+  'name: Security' \
+  'security-events: write' \
+  'github/codeql-action/init@' \
+  'languages: go' \
+  'github/codeql-action/analyze@' \
+  'actions/dependency-review-action@' \
+  "if: github.event_name == 'pull_request'" \
+  'gitleaks/gitleaks-action@' \
+  'GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"' \
+  'aquasecurity/trivy-action@' \
+  'severity: HIGH,CRITICAL' \
+  'exit-code: 1' \
+  'CycloneDX/gh-gomod-generate-sbom@' \
+  'sbom.cdx.json' \
+  'retention-days: 7'; do
+  if ! grep -Fq -- "$required_text" "$security_workflow"; then
+    echo "security.yml is missing required text: $required_text" >&2
+    exit 1
+  fi
+done
+
+if grep -E 'uses: [^[:space:]]+@' "$security_workflow" \
+  | grep -Evq 'uses: [^[:space:]]+@[0-9a-f]{40}([[:space:]]+#.*)?$'; then
+  echo "security.yml actions must be pinned by full commit SHA" >&2
   exit 1
 fi
 
