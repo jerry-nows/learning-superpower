@@ -56,9 +56,9 @@ public final class SkeletonView: UIView {
         accessibilityElementsHidden = true
         clipsToBounds = true
         gradientLayer.colors = [
-            ColorToken.skeletonBase.color.cgColor
-            ColorToken.skeletonHighlight.color.cgColor,
             ColorToken.skeletonBase.color.cgColor,
+            ColorToken.skeletonHighlight.color.cgColor,
+            ColorToken.skeletonBase.color.cgColor
         ]
         gradientLayer.locations = [0, 0.5, 1]
         gradientLayer.startPoint = CGPoint(x: 0, y: 0.5)
