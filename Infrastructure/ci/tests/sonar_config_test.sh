@@ -44,6 +44,18 @@ assert_property() {
 
 [[ -f "$config" ]] || fail "sonar-project.properties is absent"
 
+if awk '
+  {
+    line = $0
+    sub(/\r$/, "", line)
+    sub(/^[[:space:]]+/, "", line)
+    if (line != "" && line !~ /^[#!]/ && index(line, "\\") > 0) found = 1
+  }
+  END { exit(found ? 0 : 1) }
+' "$config"; then
+  fail 'property escapes and continuations are not allowed'
+fi
+
 assert_property 'sonar.projectKey' 'learning-superpower'
 assert_property 'sonar.projectName' 'Learning Superpower Commerce'
 assert_property 'sonar.sourceEncoding' 'UTF-8'
@@ -100,6 +112,22 @@ if [[ "${SONAR_CONFIG_SKIP_REGRESSIONS:-0}" != 1 ]]; then
 
   sed 's/^sonar\.exclusions=.*/sonar.exclusions=/' "$config" > "$temp_dir/empty-exclusions.properties"
   assert_rejected "$temp_dir/empty-exclusions.properties" 'empty exclusions'
+
+  cp "$config" "$temp_dir/escaped-project-key.properties"
+  printf '%s\n' 'sonar\.projectKey=attacker-override' >> "$temp_dir/escaped-project-key.properties"
+  assert_rejected "$temp_dir/escaped-project-key.properties" 'escaped project key override'
+
+  cp "$config" "$temp_dir/unicode-project-key.properties"
+  printf '%s\n' 'sonar\u002eprojectKey=attacker-override' >> "$temp_dir/unicode-project-key.properties"
+  assert_rejected "$temp_dir/unicode-project-key.properties" 'Unicode-escaped project key override'
+
+  cp "$config" "$temp_dir/escaped-token.properties"
+  printf '%s\n' 'sonar\.token=secret' >> "$temp_dir/escaped-token.properties"
+  assert_rejected "$temp_dir/escaped-token.properties" 'escaped credential key'
+
+  cp "$config" "$temp_dir/continued-property.properties"
+  printf '%s\n' "sonar.projectKey\\" '=attacker-override' >> "$temp_dir/continued-property.properties"
+  assert_rejected "$temp_dir/continued-property.properties" 'continued property'
 fi
 
 printf 'PASS: SonarQube project mapping is valid\n'
