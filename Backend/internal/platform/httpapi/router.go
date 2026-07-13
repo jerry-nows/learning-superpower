@@ -15,6 +15,11 @@ func NewRouter(health http.Handler, auth AuthRoutes) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/healthz":
+			if r.Method != http.MethodGet {
+				w.Header().Set("Allow", http.MethodGet)
+				writeError(w, http.StatusMethodNotAllowed, "AUTH_METHOD_NOT_ALLOWED")
+				return
+			}
 			if health == nil {
 				http.NotFound(w, r)
 				return

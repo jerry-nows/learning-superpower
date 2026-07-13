@@ -67,6 +67,19 @@ func TestRouterRejectsWrongMethodsAndUnknownOrTrailingRoutes(t *testing.T) {
 	}
 }
 
+func TestRouterHealthRejectsWrongMethodsAtBoundary(t *testing.T) {
+	router := NewRouter(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("health handler must not receive %s", r.Method)
+	}), new(authRoutesSpy))
+	for _, method := range []string{http.MethodPost, http.MethodPut} {
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(method, "/healthz", nil))
+		if w.Code != http.StatusMethodNotAllowed || w.Header().Get("Allow") != http.MethodGet || w.Header().Get("Content-Type") != "application/json" || !strings.Contains(w.Body.String(), `"code":"AUTH_METHOD_NOT_ALLOWED"`) {
+			t.Fatalf("%s /healthz: status=%d allow=%q content-type=%q body=%s", method, w.Code, w.Header().Get("Allow"), w.Header().Get("Content-Type"), w.Body.String())
+		}
+	}
+}
+
 func TestRouterNilAuthDoesNotPanic(t *testing.T) {
 	router := NewRouter(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }), nil)
 	for _, path := range []string{"/v1/auth/login", "/v1/auth/refresh", "/v1/auth/logout"} {
