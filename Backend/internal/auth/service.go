@@ -41,10 +41,15 @@ type RefreshTokenFactory func() (RefreshToken, error)
 type FamilyIDFactory func() (string, error)
 
 var (
-	ErrAuthentication  = errors.New("authentication failed")
-	ErrRefreshRejected = errors.New("refresh token rejected")
-	ErrLogoutFailed    = errors.New("logout failed")
-	ErrRepository      = errors.New("authentication repository failure")
+	ErrAuthentication         = errors.New("authentication failed")
+	ErrRefreshRejected        = errors.New("refresh token rejected")
+	ErrLogoutFailed           = errors.New("logout failed")
+	ErrRepository             = errors.New("authentication repository failure")
+	ErrUserNotFound           = errors.New("user not found")
+	ErrRefreshSessionNotFound = errors.New("refresh session not found")
+	ErrRefreshSessionExpired  = errors.New("refresh session expired")
+	ErrRefreshTokenReuse      = errors.New("refresh token reuse")
+	ErrRefreshFamilyRevoked   = errors.New("refresh family revoked")
 )
 
 // ServiceError is safe to expose at an API boundary: it contains a stable code
@@ -53,6 +58,37 @@ type ServiceError struct {
 	Code      string
 	Retryable bool
 	cause     error
+}
+
+func mapLoginError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return &ServiceError{"authentication_cancelled", false, err}
+	}
+	if errors.Is(err, ErrUserNotFound) {
+		return &ServiceError{"authentication_failed", false, ErrAuthentication}
+	}
+	if errors.Is(err, ErrRepository) {
+		return &ServiceError{"repository_failed", true, ErrRepository}
+	}
+	// Unknown lookup failures are deliberately indistinguishable from a missing
+	// account at the authentication boundary.
+	return &ServiceError{"authentication_failed", false, ErrAuthentication}
+}
+
+func mapRefreshError(err error) error {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return &ServiceError{"refresh_cancelled", false, err}
+	}
+	if errors.Is(err, ErrRefreshSessionNotFound) || errors.Is(err, ErrRefreshSessionExpired) || errors.Is(err, ErrRefreshTokenReuse) || errors.Is(err, ErrRefreshFamilyRevoked) {
+		return &ServiceError{"refresh_rejected", false, ErrRefreshRejected}
+	}
+	if errors.Is(err, ErrRepository) {
+		return &ServiceError{"repository_failed", true, ErrRepository}
+	}
+	return &ServiceError{"refresh_rejected", false, ErrRefreshRejected}
 }
 
 func (e *ServiceError) Error() string { return e.Code }
@@ -108,7 +144,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (User, Toke
 	defer cancel()
 	record, err := s.cfg.Users.FindByEmail(ctx, normalizeEmail(email))
 	if err != nil {
-		return User{}, TokenPair{}, &ServiceError{"authentication_failed", false, ErrAuthentication}
+		return User{}, TokenPair{}, mapLoginError(err)
 	}
 	if record.Status != UserStatusActive {
 		return User{}, TokenPair{}, &ServiceError{"authentication_failed", false, ErrAuthentication}
@@ -155,7 +191,10 @@ func (s *Service) Refresh(ctx context.Context, presentedOpaqueToken string) (Use
 	next := RefreshSession{TokenDigest: replacement.Digest(), ExpiresAt: s.cfg.Clock().UTC().Add(s.cfg.RefreshLifetime)}
 	current, err := s.cfg.Sessions.Rotate(ctx, presented.Digest(), next)
 	if err != nil {
-		return User{}, TokenPair{}, &ServiceError{"refresh_rejected", false, ErrRefreshRejected}
+		return User{}, TokenPair{}, mapRefreshError(err)
+	}
+	if current.UserID == "" || current.FamilyID == "" {
+		return User{}, TokenPair{}, &ServiceError{"repository_failed", true, ErrRepository}
 	}
 	access, err := s.cfg.AccessTokenIssuer.Issue(current.UserID)
 	if err != nil {
@@ -171,6 +210,9 @@ func (s *Service) Logout(ctx context.Context, userID UserID) error {
 		return &ServiceError{"logout_failed", false, ErrLogoutFailed}
 	}
 	if err := s.cfg.Sessions.RevokeUser(ctx, userID); err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return &ServiceError{"logout_cancelled", false, errors.Join(err, ErrLogoutFailed)}
+		}
 		return &ServiceError{"logout_failed", true, ErrLogoutFailed}
 	}
 	return nil
