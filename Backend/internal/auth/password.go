@@ -121,9 +121,17 @@ func parsePasswordHash(encodedHash string) (argon2Parameters, []byte, []byte, er
 	if err != nil || len(salt) < defaultSaltBytes || len(salt) > maxSaltBytes {
 		return argon2Parameters{}, nil, nil, malformedPasswordHash("invalid salt encoding")
 	}
+	if base64.RawStdEncoding.EncodeToString(salt) != parts[4] {
+		clear(salt)
+		return argon2Parameters{}, nil, nil, malformedPasswordHash("non-canonical salt encoding")
+	}
 	expectedKey, err := base64.RawStdEncoding.Strict().DecodeString(parts[5])
 	if err != nil || len(expectedKey) != int(passwordKeyBytes) {
 		return argon2Parameters{}, nil, nil, malformedPasswordHash("invalid key encoding")
+	}
+	if base64.RawStdEncoding.EncodeToString(expectedKey) != parts[5] {
+		clear(expectedKey)
+		return argon2Parameters{}, nil, nil, malformedPasswordHash("non-canonical key encoding")
 	}
 
 	return params, salt, expectedKey, nil

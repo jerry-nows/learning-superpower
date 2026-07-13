@@ -58,3 +58,43 @@ func TestPasswordHasherRejectsNonCanonicalPHCParameters(t *testing.T) {
 		t.Fatalf("verify error = %v, want ErrMalformedPasswordHash", verifyErr)
 	}
 }
+
+func TestPasswordHasherRejectsLineBreaksInPHCBase64Segments(t *testing.T) {
+	t.Parallel()
+
+	hasher := NewPasswordHasher()
+	encodedHash, err := hasher.Hash("correct horse battery staple")
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	parts := strings.Split(encodedHash, "$")
+	if len(parts) != 6 {
+		t.Fatalf("generated PHC parts = %d, want 6", len(parts))
+	}
+
+	tests := []struct {
+		name    string
+		segment int
+		lineEnd string
+	}{
+		{name: "salt LF", segment: 4, lineEnd: "\n"},
+		{name: "salt CR", segment: 4, lineEnd: "\r"},
+		{name: "key LF", segment: 5, lineEnd: "\n"},
+		{name: "key CR", segment: 5, lineEnd: "\r"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			malformedParts := append([]string(nil), parts...)
+			malformedParts[test.segment] = malformedParts[test.segment][:1] + test.lineEnd + malformedParts[test.segment][1:]
+
+			matches, verifyErr := hasher.Verify("correct horse battery staple", strings.Join(malformedParts, "$"))
+			if matches {
+				t.Fatal("password matched a PHC value containing a line break")
+			}
+			if !errors.Is(verifyErr, ErrMalformedPasswordHash) {
+				t.Fatalf("verify error = %v, want ErrMalformedPasswordHash", verifyErr)
+			}
+		})
+	}
+}
