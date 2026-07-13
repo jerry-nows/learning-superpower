@@ -186,6 +186,9 @@ func TestServiceRefreshRotationAndRejectsInvalidOrReused(t *testing.T) {
 	if ss.rotateDigest != old.Digest() {
 		t.Fatal("rotation used wrong digest")
 	}
+	if ss.rotateReplacement.TokenDigest == ([32]byte{}) || !ss.rotateReplacement.ExpiresAt.Equal(time.Unix(100, 0).Add(time.Hour)) || ss.gotCtx == nil {
+		t.Fatalf("replacement contract: %#v", ss.rotateReplacement)
+	}
 	for _, in := range []string{"", "not-base64", " " + old.Encoded()} {
 		if _, _, err := s.Refresh(context.Background(), in); !errors.Is(err, ErrRefreshRejected) {
 			t.Errorf("input %q error=%v", in, err)
@@ -194,6 +197,22 @@ func TestServiceRefreshRotationAndRejectsInvalidOrReused(t *testing.T) {
 	ss.rotateErr = ErrRefreshTokenReuse
 	if _, _, err := s.Refresh(context.Background(), old.Encoded()); !errors.Is(err, ErrRefreshRejected) {
 		t.Fatalf("reuse error=%v", err)
+	}
+}
+
+func TestServiceRefreshInfraAndCancellation(t *testing.T) {
+	old, _ := NewRefreshToken(strings.NewReader(strings.Repeat("b", 32)))
+	ss := &serviceSessions{rotateErr: errors.New("redis unavailable")}
+	s := testService(t, &serviceUsers{}, ss, &serviceIssuer{}, &serviceVerifier{}, deterministicRefreshes(), func() (string, error) { return "f", nil })
+	_, _, err := s.Refresh(context.Background(), old.Encoded())
+	var se *ServiceError
+	if !errors.As(err, &se) || !se.Retryable || se.Code != "repository_failed" {
+		t.Fatalf("infra=%v", err)
+	}
+	ss.rotateErr = context.Canceled
+	_, _, err = s.Refresh(context.Background(), old.Encoded())
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancel=%v", err)
 	}
 }
 
