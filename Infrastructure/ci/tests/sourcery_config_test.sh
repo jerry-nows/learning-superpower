@@ -24,26 +24,44 @@ ruby -e '
 for required in \
   '# Sourcery Dashboard Review Rules' \
   'Dashboard is the source of truth' \
-  'Apps/**/*.swift,Packages/**/*.swift' \
-  'Swift 6 and MainActor correctness' \
-  'Blocking: Yes' \
-  'Clean Architecture, MVVM-C, Factory, and XCoordinator' \
-  'Blocking: No' \
-  'Backend/**/*.go' \
-  'Go, JWT, and OWASP' \
-  '**/*' \
-  'correctness, security, and evidence' \
-  'formatting noise' \
-  '**/*Tests.swift,**/*_test.go,Apps/**/UITests/**/*.swift' \
-  'Regression tests, mocks, and UI recovery' \
   'Reload the Dashboard' \
   'bash Infrastructure/ci/tests/sourcery_config_test.sh'; do
   grep -Fq "$required" "$rules" || fail "missing Dashboard rule artifact content: $required"
 done
 
-[[ "$(grep -Fc '## Rule ' "$rules")" -eq 5 ]] || fail 'Dashboard rule artifact must contain exactly five rules'
-[[ "$(grep -Fc 'Blocking: Yes' "$rules")" -eq 3 ]] || fail 'Dashboard rule artifact must contain exactly three blocking rules'
-[[ "$(grep -Fc 'Blocking: No' "$rules")" -eq 2 ]] || fail 'Dashboard rule artifact must contain exactly two nonblocking rules'
+ruby - "$rules" <<'RUBY' || fail 'Dashboard rule sections do not match the review contract'
+  rules = File.read(ARGV.fetch(0))
+  sections = rules.scan(/^## Rule (\d+) — ([^\n]+)\n(.*?)(?=^## Rule |^## Dashboard setup)/m)
+
+  expected = [
+    ["1", "Swift 6 and MainActor correctness", "Apps/**/*.swift,Packages/**/*.swift", "Yes",
+     ["Swift 6", "data races", "MainActor", "actor isolation", "Sendable", "Task lifetime", "file and line", "impact", "evidence", "concrete fix"]],
+    ["2", "Clean Architecture, MVVM-C, Factory, and XCoordinator", "Apps/**/*.swift,Packages/**/*.swift", "No",
+     ["architecture boundaries", "framework-independent", "MVVM-C", "Factory", "dependency direction", "XCoordinator", "navigation", "file-and-line evidence", "concrete fix"]],
+    ["3", "Go, JWT, and OWASP", "Backend/**/*.go", "Yes",
+     ["Go", "context propagation", "error handling", "concurrency safety", "resource lifetime", "JWT", "OWASP", "input validation", "injection", "sensitive-data exposure", "secret handling", "file and line", "concrete remediation"]],
+    ["4", "Cross-repository correctness, security, and evidence", "**/*", "Yes",
+     ["correctness", "security", "changed-code evidence", "file and line", "impact", "remediation", "formatting noise", "SwiftLint", "gofmt"]],
+    ["5", "Regression tests, mocks, and UI recovery", "**/*Tests.swift,**/*_test.go,Apps/**/UITests/**/*.swift", "No",
+     ["regression test", "behavior fix", "new behavior", "failure paths", "concurrency-sensitive", "mocks", "behavior fidelity", "UI tests", "deterministic state setup", "recovery", "failure evidence"]]
+  ]
+
+  abort "expected exactly five ordered rule sections" unless sections.length == expected.length
+
+  sections.zip(expected).each do |(number, title, body), (wanted_number, wanted_title, wanted_path, wanted_blocking, topics)|
+    abort "unexpected rule title or order: Rule #{number} — #{title}" unless [number, title] == [wanted_number, wanted_title]
+
+    paths = body.scan(/^- Paths: `([^`]+)`$/)
+    blocking = body.scan(/^- Blocking: (Yes|No)$/)
+    instructions = body.scan(/^- Instructions: (.+)$/).flatten
+    abort "Rule #{number} must have exact Paths glob #{wanted_path}" unless paths == [[wanted_path]]
+    abort "Rule #{number} must have Blocking: #{wanted_blocking}" unless blocking == [[wanted_blocking]]
+    abort "Rule #{number} must have exactly one Instructions field" unless instructions.length == 1
+
+    missing = topics.reject { |topic| instructions.first.include?(topic) }
+    abort "Rule #{number} instructions missing required topics: #{missing.join(", ")}" unless missing.empty?
+  end
+RUBY
 
 for artifact in "$config" "$rules"; do
   if grep -Eiq '^[[:space:]]*(ignore|source|sources|exclude|exclusions)[[:space:]]*:' "$artifact"; then
@@ -71,6 +89,16 @@ if [[ "${SOURCERY_CONFIG_SKIP_REGRESSIONS:-0}" != 1 ]]; then
 
   sed '/Swift 6 and MainActor correctness/d' "$rules" > "$temp_dir/missing-main-actor.md"
   assert_rejected "$config" "$temp_dir/missing-main-actor.md" 'missing Swift blocking rule'
+
+  sed \
+    -e '/## Rule 1/,/## Rule 2/{s/Blocking: Yes/Blocking: No/;}' \
+    -e '/## Rule 2/,/## Rule 3/{s/Blocking: No/Blocking: Yes/;}' \
+    "$rules" > "$temp_dir/swapped-blocking.md"
+  assert_rejected "$config" "$temp_dir/swapped-blocking.md" 'swapped Rule 1 and Rule 2 blocking states'
+
+  sed '/## Rule 2/,/## Rule 3/{s#Apps/\*\*/\*.swift,Packages/\*\*/\*.swift#Backend/**/*.go#;}' \
+    "$rules" > "$temp_dir/wrong-rule-2-path.md"
+  assert_rejected "$config" "$temp_dir/wrong-rule-2-path.md" 'wrong Rule 2 path glob'
 
   cp "$config" "$temp_dir/unsupported-key.yaml"
   printf '%s\n' 'review_instructions: []' >> "$temp_dir/unsupported-key.yaml"
