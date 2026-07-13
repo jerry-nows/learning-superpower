@@ -44,7 +44,7 @@ func routeAuth(w http.ResponseWriter, r *http.Request, auth AuthRoutes, method s
 		return
 	}
 	if auth == nil {
-		writeError(w, http.StatusServiceUnavailable, "AUTH_UNAVAILABLE")
+		writeError(w, http.StatusInternalServerError, "AUTH_INTERNAL")
 		return
 	}
 	route(auth, w, r)

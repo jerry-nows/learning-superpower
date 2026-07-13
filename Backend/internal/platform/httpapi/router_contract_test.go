@@ -85,7 +85,7 @@ func TestRouterNilAuthDoesNotPanic(t *testing.T) {
 	for _, path := range []string{"/v1/auth/login", "/v1/auth/refresh", "/v1/auth/logout"} {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, path, nil))
-		if w.Code != http.StatusServiceUnavailable || w.Header().Get("Content-Type") != "application/json" {
+		if w.Code != http.StatusInternalServerError || w.Header().Get("Content-Type") != "application/json" || !strings.Contains(w.Body.String(), `"code":"AUTH_INTERNAL"`) {
 			t.Fatalf("%s: status=%d content-type=%q", path, w.Code, w.Header().Get("Content-Type"))
 		}
 	}
