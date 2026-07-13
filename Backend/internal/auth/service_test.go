@@ -102,7 +102,7 @@ func TestServiceLoginLifecycleAndValidation(t *testing.T) {
 		ok                 bool
 		wantCode           string
 	}{
-		{"unknown", base, errors.New("missing"), nil, false, "authentication_failed"}, {"disabled", CredentialRecord{ID: "u1", Status: UserStatusDisabled}, nil, nil, false, "authentication_failed"}, {"wrong", base, nil, nil, false, "authentication_failed"}, {"malformed", base, nil, errors.New("bad hash"), false, "authentication_failed"}, {"success", base, nil, nil, true, ""},
+		{"unknown", base, ErrUserNotFound, nil, false, "authentication_failed"}, {"disabled", CredentialRecord{ID: "u1", Status: UserStatusDisabled}, nil, nil, false, "authentication_failed"}, {"wrong", base, nil, nil, false, "authentication_failed"}, {"malformed", base, nil, errors.New("bad hash"), false, "authentication_failed"}, {"success", base, nil, nil, true, ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -155,7 +155,7 @@ func TestServiceRefreshRotationAndRejectsInvalidOrReused(t *testing.T) {
 			t.Errorf("input %q error=%v", in, err)
 		}
 	}
-	ss.rotateErr = errors.New("reused")
+	ss.rotateErr = ErrRefreshTokenReuse
 	if _, _, err := s.Refresh(context.Background(), old.Encoded()); !errors.Is(err, ErrRefreshRejected) {
 		t.Fatalf("reuse error=%v", err)
 	}
