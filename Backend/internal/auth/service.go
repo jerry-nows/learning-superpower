@@ -73,9 +73,7 @@ func mapLoginError(err error) error {
 	if errors.Is(err, ErrRepository) {
 		return &ServiceError{"repository_failed", true, ErrRepository}
 	}
-	// Unknown lookup failures are deliberately indistinguishable from a missing
-	// account at the authentication boundary.
-	return &ServiceError{"authentication_failed", false, ErrAuthentication}
+	return &ServiceError{"repository_failed", true, errors.Join(ErrRepository, err)}
 }
 
 func mapRefreshError(err error) error {
@@ -88,7 +86,7 @@ func mapRefreshError(err error) error {
 	if errors.Is(err, ErrRepository) {
 		return &ServiceError{"repository_failed", true, ErrRepository}
 	}
-	return &ServiceError{"refresh_rejected", false, ErrRefreshRejected}
+	return &ServiceError{"repository_failed", true, errors.Join(ErrRepository, err)}
 }
 
 func (e *ServiceError) Error() string { return e.Code }
@@ -172,7 +170,10 @@ func (s *Service) issue(ctx context.Context, user User) (User, TokenPair, error)
 	}
 	session := RefreshSession{FamilyID: family, UserID: user.ID, TokenDigest: refresh.Digest(), ExpiresAt: expires}
 	if err := s.cfg.Sessions.Create(ctx, session); err != nil {
-		return User{}, TokenPair{}, &ServiceError{"token_issue_failed", true, ErrRepository}
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return User{}, TokenPair{}, &ServiceError{"token_issue_cancelled", false, err}
+		}
+		return User{}, TokenPair{}, &ServiceError{"repository_failed", true, errors.Join(ErrRepository, err)}
 	}
 	return user, TokenPair{AccessToken: access.Value, RefreshToken: refresh.Encoded(), AccessExpiresAt: access.ExpiresAt, RefreshExpiresAt: expires}, nil
 }
