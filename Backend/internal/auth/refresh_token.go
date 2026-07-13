@@ -6,6 +6,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 )
@@ -66,8 +67,11 @@ func ParseRefreshToken(presented string) (RefreshToken, error) {
 // request. It is deliberately not a JSON field.
 func (token RefreshToken) Encoded() string { return token.encoded }
 
-// String implements fmt.Stringer for explicit transport mapping only.
-func (token RefreshToken) String() string { return token.encoded }
+// Format prevents the default formatter from exposing unexported bearer and
+// digest fields in logs. Transport code must call Encoded explicitly.
+func (token RefreshToken) Format(state fmt.State, verb rune) {
+	_, _ = io.WriteString(state, "[redacted refresh token]")
+}
 
 // Digest returns the SHA-256 storage digest. The fixed-size value prevents
 // callers from mutating the token's internal state.

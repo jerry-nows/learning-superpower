@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -50,4 +51,11 @@ func TestRefreshTokenDoesNotSerializeSecrets(t *testing.T) {
 	_, parseErr := ParseRefreshToken("")
 	require.True(t, errors.Is(parseErr, ErrInvalidRefreshToken))
 	require.NotEqual(t, zero, token)
+}
+
+func TestRefreshTokenFormattingDoesNotLeakBearerValue(t *testing.T) {
+	token, err := NewRefreshToken(bytes.NewReader(bytes.Repeat([]byte{0xCD}, 32)))
+	require.NoError(t, err)
+	formatted := fmt.Sprintf("%v %s", token, token)
+	require.NotContains(t, formatted, token.Encoded())
 }
