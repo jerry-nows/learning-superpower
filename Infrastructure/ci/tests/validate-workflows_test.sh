@@ -296,11 +296,16 @@ for required_text in \
   'security-events: write' \
   'github/codeql-action/init@' \
   'languages: go' \
+  'build-mode: manual' \
+  'go-version-file: Backend/go.mod' \
+  'working-directory: Backend' \
+  'run: go build ./...' \
   'github/codeql-action/analyze@' \
   'actions/dependency-review-action@' \
   "if: github.event_name == 'pull_request'" \
-  'gitleaks/gitleaks-action@' \
-  'GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"' \
+  'GITLEAKS_VERSION: 8.30.1' \
+  'GITLEAKS_ARCHIVE_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb' \
+  'detect --source .' \
   'aquasecurity/trivy-action@' \
   'severity: HIGH,CRITICAL' \
   'exit-code: 1' \
@@ -312,6 +317,11 @@ for required_text in \
     exit 1
   fi
 done
+
+if grep -Eq 'gitleaks/gitleaks-action@|GITLEAKS_LICENSE|build-mode: none' "$security_workflow"; then
+  echo "security.yml must use license-free pinned Gitleaks OSS and a supported CodeQL Go build mode" >&2
+  exit 1
+fi
 
 if grep -E 'uses: [^[:space:]]+@' "$security_workflow" \
   | grep -Evq 'uses: [^[:space:]]+@[0-9a-f]{40}([[:space:]]+#.*)?$'; then
