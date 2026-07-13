@@ -131,7 +131,8 @@ func toTokens(t TokenPair) tokenResponse {
 }
 func readJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 	mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil || mediaType != "application/json" || (params["charset"] != "" && !strings.EqualFold(params["charset"], "utf-8")) {
+	validParams := len(params) == 0 || (len(params) == 1 && strings.EqualFold(params["charset"], "utf-8"))
+	if err != nil || mediaType != "application/json" || !validParams {
 		return false
 	}
 	body := http.MaxBytesReader(w, r.Body, maxAuthBody)
@@ -180,6 +181,7 @@ func (h *Handler) serviceError(w http.ResponseWriter, r *http.Request, err error
 			status = http.StatusUnauthorized
 		case "authentication_cancelled", "refresh_cancelled", "logout_cancelled", "token_issue_cancelled":
 			status = http.StatusRequestTimeout
+			retry = false
 		case "repository_failed", "token_issue_failed":
 			status = http.StatusInternalServerError
 		case "logout_failed":

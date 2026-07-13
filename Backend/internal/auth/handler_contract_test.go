@@ -31,7 +31,7 @@ func TestHandlerRefreshStrictContentTypeAndServiceError(t *testing.T) {
 	h := NewHandler(handlerService{refresh: func(context.Context, string) (User, TokenPair, error) {
 		return User{}, TokenPair{}, &ServiceError{Code: "repository_failed", Retryable: true, cause: ErrRepository}
 	}}, nil)
-	for _, contentType := range []string{"application/json-malicious", "text/plain", ""} {
+	for _, contentType := range []string{"application/json-malicious", "text/plain", "", "application/json;foo=bar", "application/json;charset=", "application/json;charset=utf-8;foo=bar"} {
 		r := httptest.NewRequest(http.MethodPost, "/refresh", strings.NewReader(`{"refresh_token":"opaque"}`))
 		r.Header.Set("Content-Type", contentType)
 		w := httptest.NewRecorder()
@@ -41,9 +41,16 @@ func TestHandlerRefreshStrictContentTypeAndServiceError(t *testing.T) {
 		}
 	}
 	r := httptest.NewRequest(http.MethodPost, "/refresh", strings.NewReader(`{"refresh_token":"opaque"}`))
+	r.Header.Set("Content-Type", "application/json; Charset=UTF-8")
+	w := httptest.NewRecorder()
+	h.Refresh(w, r)
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("valid charset status=%d", w.Code)
+	}
+	r = httptest.NewRequest(http.MethodPost, "/refresh", strings.NewReader(`{"refresh_token":"opaque"}`))
 	r.Header.Set("Content-Type", "application/json; charset=utf-8")
 	r.Header.Set("X-Trace-ID", "trace-1234")
-	w := httptest.NewRecorder()
+	w = httptest.NewRecorder()
 	h.Refresh(w, r)
 	if w.Code != http.StatusInternalServerError || !strings.Contains(w.Body.String(), `"retryable":true`) || !strings.Contains(w.Body.String(), `"trace_id":"trace-1234"`) || strings.Contains(w.Body.String(), "repository") {
 		t.Fatalf("error response=%s", w.Body)
