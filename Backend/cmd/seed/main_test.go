@@ -86,21 +86,34 @@ func TestSeedNormalizesAndUpsertsWithoutPII(t *testing.T) {
 func TestSeedFailsClosedOnHashOrPingFailure(t *testing.T) {
 	db := &fakeSeedDB{pingErr: errors.New("dial secret")}
 	env := map[string]string{"DATABASE_URL": "dsn", "SEED_USER_EMAIL": "user@example.com", "SEED_USER_PASSWORD": "SuperSecret123!"}
-	err := run(context.Background(), func(k string) string { return env[k] }, nil, new(strings.Builder), func(context.Context, string) (seedDB, error) { return db, nil }, &fakeSeedHasher{hash: "hash", err: errors.New("hash failure")})
+	out := new(strings.Builder)
+	err := run(context.Background(), func(k string) string { return env[k] }, nil, out, func(context.Context, string) (seedDB, error) { return db, nil }, &fakeSeedHasher{hash: "hash-secret", err: errors.New("hash failure")})
 	if err == nil {
 		t.Fatal("expected ping failure")
 	}
 	if !db.closed {
 		t.Fatal("database was not closed")
 	}
+	assertSeedSecretsRedacted(t, out.String(), err.Error(), "dsn", "user@example.com", "SuperSecret123!", "hash-secret")
 }
 
 func TestSeedHashFailureDoesNotExecute(t *testing.T) {
 	db := &fakeSeedDB{}
 	env := map[string]string{"DATABASE_URL": "dsn", "SEED_USER_EMAIL": "user@example.com", "SEED_USER_PASSWORD": "SuperSecret123!"}
-	err := run(context.Background(), func(k string) string { return env[k] }, nil, new(strings.Builder), func(context.Context, string) (seedDB, error) { return db, nil }, &fakeSeedHasher{err: errors.New("hash failure")})
+	out := new(strings.Builder)
+	err := run(context.Background(), func(k string) string { return env[k] }, nil, out, func(context.Context, string) (seedDB, error) { return db, nil }, &fakeSeedHasher{hash: "hash-secret", err: errors.New("hash failure")})
 	if err == nil || db.query != "" {
 		t.Fatalf("hash failure = %v, query=%q", err, db.query)
+	}
+	assertSeedSecretsRedacted(t, out.String(), err.Error(), "dsn", "user@example.com", "SuperSecret123!", "hash-secret")
+}
+
+func assertSeedSecretsRedacted(t *testing.T, output, returnedError string, secrets ...string) {
+	t.Helper()
+	for _, secret := range secrets {
+		if strings.Contains(output, secret) || strings.Contains(returnedError, secret) {
+			t.Fatalf("secret %q leaked in output/error: %q / %q", secret, output, returnedError)
+		}
 	}
 }
 
@@ -156,11 +169,14 @@ func TestSeedOpenAndExecFailuresAreGeneric(t *testing.T) {
 				db = &fakeSeedDB{execErr: errors.New("password-hash-secret")}
 				open = func(context.Context, string) (seedDB, error) { return db, nil }
 			}
-			if err := run(context.Background(), func(k string) string { return env[k] }, nil, out, open, &fakeSeedHasher{hash: "hash"}); err == nil {
+			err := run(context.Background(), func(k string) string { return env[k] }, nil, out, open, &fakeSeedHasher{hash: "hash"})
+			if err == nil {
 				t.Fatal("expected failure")
 			}
-			if strings.Contains(out.String(), "dsn-secret") || strings.Contains(out.String(), "password-hash-secret") {
-				t.Fatalf("secret leaked: %q", out.String())
+			for _, secret := range []string{"dsn-secret", "user@example.com", "SuperSecret123!", "password-hash-secret"} {
+				if strings.Contains(out.String(), secret) || strings.Contains(err.Error(), secret) {
+					t.Fatalf("secret leaked in output/error: %q / %q", out.String(), err)
+				}
 			}
 		})
 	}
