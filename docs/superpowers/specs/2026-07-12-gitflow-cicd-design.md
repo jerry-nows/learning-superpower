@@ -86,7 +86,7 @@ Workflows also run after pushes to `develop` and `main`, and support manual `wor
 
 ## Sourcery AI Review
 
-Sourcery is installed as a GitHub App for the repository. A repository-level `.sourcery.yaml` defines review standards for:
+Sourcery is installed as a GitHub App for the repository. The Sourcery Dashboard is the source of truth for active AI review rules. `docs/development/sourcery-review-rules.md` is the auditable, copy-ready repository record of the Dashboard rules for:
 
 - UIKit, MVVM-C, and Clean Architecture boundaries;
 - Swift 6 concurrency and actor isolation;
@@ -94,6 +94,8 @@ Sourcery is installed as a GitHub App for the repository. A repository-level `.s
 - idiomatic Go and service boundaries;
 - OWASP-aligned security and secret handling;
 - test quality and regressions.
+
+The repository-level `.sourcery.yaml` remains a minimal valid legacy configuration file and does not carry AI review instructions. Dashboard changes are saved, reloaded, and checked against the repository record; the repository validator checks the record's exact paths and blocking-state split.
 
 Sourcery reviews new pull requests automatically. Existing PR #3 is triggered with the `@sourcery-ai review` command after configuration is pushed. The actual Sourcery check name is observed from that run before it is added to branch protection. Sourcery does not replace the required human approval.
 
@@ -155,7 +157,7 @@ Contract tests validate branch-policy decisions and required configuration witho
 1. Add CI/CD CR files promoted ahead of the original Phase 7 work.
 2. Add policy contracts, workflow validators, runner preflight scripts, and Makefile commands.
 3. Add the policy, backend, iOS, security, SonarQube, and aggregate workflows.
-4. Add `.sourcery.yaml` and the CI/CD operations runbook.
+4. Add minimal legacy `.sourcery.yaml`, the auditable Dashboard review-rules record, and the CI/CD operations runbook.
 5. Validate locally, commit, and push the workflow changes.
 6. Create `develop` from `main`.
 7. Configure repository variables and secrets, then register the self-hosted runner.

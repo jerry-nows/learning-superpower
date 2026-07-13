@@ -533,36 +533,37 @@ git commit -m "ci: aggregate strict quality gates"
 
 **Files:**
 - Create: `.sourcery.yaml`
+- Create: `docs/development/sourcery-review-rules.md`
 - Test: `Infrastructure/ci/tests/sourcery_config_test.sh`
 
 **Interfaces:**
 - Consumes: Sourcery GitHub App already installed for the repository.
-- Produces: repository review instructions covering Swift, architecture, Go, OWASP, and tests.
+- Produces: minimal valid legacy YAML plus an auditable, copy-ready record of Dashboard rules covering Swift, architecture, Go, OWASP, and tests. The Dashboard is the source of truth for active AI review rules.
 
 - [ ] **Step 1: Write failing config assertions**
 
-Require review guidance containing `Swift 6`, `MainActor`, `Clean Architecture`, `MVVM-C`, `Factory`, `XCoordinator`, `Go`, `OWASP`, and `regression test`; reject secrets and unsupported source exclusions.
+Require five documented Dashboard rules with their exact path globs and three-blocking/two-nonblocking split. Require guidance containing `Swift 6`, `MainActor`, `Clean Architecture`, `MVVM-C`, `Factory`, `XCoordinator`, `Go`, `JWT`, `OWASP`, and `regression test`; validate the meaningful minimal legacy YAML schema and reject secrets and unsupported source exclusions.
 
 - [ ] **Step 2: Verify RED**
 
 Run: `bash Infrastructure/ci/tests/sourcery_config_test.sh`
 
-Expected: FAIL because `.sourcery.yaml` is absent.
+Expected: FAIL because the required Sourcery artifact is absent.
 
 - [ ] **Step 3: Add standards**
 
-Configure Sourcery review instructions to report only actionable findings, include file/line evidence, prioritize correctness/security/data races, and avoid formatting feedback already covered by SwiftLint/gofmt.
+Keep `.sourcery.yaml` minimal and valid under the published legacy schema. Record the Dashboard rules in `docs/development/sourcery-review-rules.md`, including exact paths and blocking states, setup and reload verification, actionable file/line evidence, correctness/security/data-race priorities, and suppression of formatting feedback already covered by SwiftLint/gofmt. Do not represent Markdown or YAML comments as active configuration.
 
 - [ ] **Step 4: Verify GREEN**
 
 Run: `bash Infrastructure/ci/tests/sourcery_config_test.sh`
 
-Expected: all standards are present and no secret pattern is found.
+Expected: all five Dashboard rules and blocking states are present, minimal YAML is valid, and no secret or unsupported exclusion pattern is found.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add .sourcery.yaml Infrastructure/ci/tests/sourcery_config_test.sh
+git add .sourcery.yaml docs/development/sourcery-review-rules.md Infrastructure/ci/tests/sourcery_config_test.sh docs/superpowers/specs/2026-07-12-gitflow-cicd-design.md docs/superpowers/plans/2026-07-12-gitflow-cicd.md
 git commit -m "ci: configure Sourcery review standards"
 ```
 
