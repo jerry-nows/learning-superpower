@@ -70,6 +70,36 @@ func TestTokenPairKeepsExplicitExpiryMetadata(t *testing.T) {
 	}
 }
 
+func TestTokenPairCannotSerializeSecretsOrMetadata(t *testing.T) {
+	pair := TokenPair{
+		AccessToken:      "access-token-secret",
+		RefreshToken:     "refresh-token-secret",
+		AccessExpiresAt:  time.Date(2026, time.July, 13, 8, 31, 0, 0, time.UTC),
+		RefreshExpiresAt: time.Date(2026, time.August, 12, 8, 31, 0, 0, time.UTC),
+	}
+
+	encoded, err := json.Marshal(pair)
+	if err != nil {
+		t.Fatalf("marshal token pair: %v", err)
+	}
+
+	if string(encoded) != "{}" {
+		t.Fatalf("token pair JSON = %s, want an empty object", encoded)
+	}
+	lower := strings.ToLower(string(encoded))
+	for _, forbidden := range []string{
+		"token",
+		"password",
+		"hash",
+		strings.ToLower(pair.AccessToken),
+		strings.ToLower(pair.RefreshToken),
+	} {
+		if strings.Contains(lower, forbidden) {
+			t.Fatalf("token pair JSON contains forbidden material %q: %s", forbidden, encoded)
+		}
+	}
+}
+
 func assertJSONDoesNotContainPassword(t *testing.T, encoded []byte, hash string) {
 	t.Helper()
 	lower := strings.ToLower(string(encoded))

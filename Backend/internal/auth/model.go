@@ -48,8 +48,8 @@ func (record CredentialRecord) PublicUser() User {
 // TokenPair carries issued secrets together with explicit, clock-independent
 // expiry metadata. HTTP handlers remain responsible for transport mapping.
 type TokenPair struct {
-	AccessToken      string
-	RefreshToken     string
-	AccessExpiresAt  time.Time
-	RefreshExpiresAt time.Time
+	AccessToken      string    `json:"-"`
+	RefreshToken     string    `json:"-"`
+	AccessExpiresAt  time.Time `json:"-"`
+	RefreshExpiresAt time.Time `json:"-"`
 }
