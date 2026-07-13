@@ -10,6 +10,8 @@ ios_workflow="$workflow_dir/ios.yml"
 security_workflow="$workflow_dir/security.yml"
 quality_workflow="$workflow_dir/quality.yml"
 ci_workflow="$workflow_dir/ci.yml"
+runbook="$repo_root/docs/development/gitflow-cicd.md"
+readme="$repo_root/README.md"
 invalid_workflow="$workflow_dir/invalid-workflow-fixture.yml"
 invalid_shell="$repo_root/Infrastructure/ci/invalid-shell-fixture.sh"
 created_github_dir=false
@@ -34,6 +36,49 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$workflow_dir"
+
+if [[ ! -f "$runbook" ]]; then
+  echo "required runbook is missing: docs/development/gitflow-cicd.md" >&2
+  exit 1
+fi
+
+if [[ ! -f "$readme" ]] || ! grep -Fq 'docs/development/gitflow-cicd.md' "$readme"; then
+  echo "README.md must link to docs/development/gitflow-cicd.md" >&2
+  exit 1
+fi
+
+for required_text in \
+  'runs-on: [self-hosted, macOS, ARM64, commerce-ios]' \
+  './config.sh --url "$REPOSITORY_URL" --token "$RUNNER_REGISTRATION_TOKEN" --labels commerce-ios' \
+  './svc.sh install' \
+  './svc.sh start' \
+  './svc.sh status' \
+  './svc.sh stop' \
+  './svc.sh uninstall' \
+  'gh variable set SONAR_HOST_URL --body "$SONAR_HOST_URL"' \
+  'gh secret set SONAR_TOKEN' \
+  'git switch -c develop main' \
+  'git push -u origin develop' \
+  'gh api "repos/$GITHUB_REPOSITORY/rulesets"' \
+  "gh pr comment 3 --body '@sourcery-ai review'" \
+  'gh run rerun "$RUN_ID" --failed' \
+  'xcrun simctl shutdown all' \
+  'xcrun simctl erase all' \
+  'open -a Docker' \
+  'docker compose up -d sonarqube' \
+  'The Sourcery Dashboard is the source of truth' \
+  'docs/development/sourcery-review-rules.md' \
+  'CodeQL advanced setup' \
+  'Disable default setup' \
+  'fail closed' \
+  'short-lived' \
+  'Settings > Actions > Runners' \
+  'Rotate SONAR_TOKEN'; do
+  if ! grep -Fq -- "$required_text" "$runbook"; then
+    echo "gitflow-cicd.md is missing required text: $required_text" >&2
+    exit 1
+  fi
+done
 
 if [[ ! -f "$pr_policy_workflow" ]]; then
   echo "required workflow is missing: .github/workflows/pr-policy.yml" >&2
