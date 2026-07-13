@@ -1,0 +1,123 @@
+openapi: 3.1.0
+info:
+  title: Ecommerce Authentication API
+  version: 1.0.0
+  description: >-
+    Authentication contract. Access JWTs have an exact 60-second lifetime.
+    Refresh tokens are opaque, randomly generated 256-bit values; only their
+    SHA-256 digests are stored server-side. Examples intentionally use redacted
+    placeholders and never contain credentials, keys, tokens, or DSNs.
+servers:
+  - url: http://localhost:8080
+paths:
+  /v1/auth/login:
+    post:
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+            example: { email: user@example.invalid, password: '<redacted>' }
+      responses:
+        '200':
+          description: Authenticated user and token pair
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '408': { $ref: '#/components/responses/Timeout' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /v1/auth/refresh:
+    post:
+      operationId: refresh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+            example: { refresh_token: '<opaque-redacted-token>' }
+      responses:
+        '200':
+          description: Rotated token pair
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '408': { $ref: '#/components/responses/Timeout' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /v1/auth/logout:
+    post:
+      operationId: logout
+      security:
+        - bearerAuth: []
+      responses:
+        '204': { description: User refresh sessions revoked }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '408': { $ref: '#/components/responses/Timeout' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access JWT bearer credential; expires exactly 60 seconds after issuance.
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 1, writeOnly: true }
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      additionalProperties: false
+      properties:
+        refresh_token: { type: string, minLength: 1, writeOnly: true, description: Opaque 256-bit token; never a JWT. }
+    User:
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        status: { type: string, enum: [active, disabled] }
+    Tokens:
+      type: object
+      required: [access_token, refresh_token, access_expires_at, refresh_expires_at]
+      properties:
+        access_token: { type: string, description: Signed JWT with an exact 60-second lifetime. }
+        refresh_token: { type: string, description: Opaque 256-bit value; server stores digest only. }
+        access_expires_at: { type: string, format: date-time }
+        refresh_expires_at: { type: string, format: date-time }
+    AuthResponse:
+      type: object
+      required: [user, tokens]
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+        tokens: { $ref: '#/components/schemas/Tokens' }
+    ErrorResponse:
+      type: object
+      required: [code, message, retryable, trace_id]
+      properties:
+        code: { type: string, pattern: '^AUTH_[A-Z0-9_]+$' }
+        message: { type: string }
+        retryable: { type: boolean }
+        trace_id: { type: string }
+  responses:
+    InvalidRequest:
+      description: Malformed JSON, missing field, or unsupported content type.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { code: AUTH_INVALID_REQUEST, message: request failed, retryable: false, trace_id: '<trace-id>' } } }
+    Unauthorized:
+      description: Invalid credentials, expired/reused refresh token, or missing/invalid bearer token.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { code: AUTH_UNAUTHORIZED, message: request failed, retryable: false, trace_id: '<trace-id>' } } }
+    Timeout:
+      description: Authentication operation timed out or was cancelled.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { code: AUTH_TIMEOUT, message: request failed, retryable: false, trace_id: '<trace-id>' } } }
+    Unavailable:
+      description: Authentication persistence or token issuer is unavailable.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { code: AUTH_UNAVAILABLE, message: request failed, retryable: true, trace_id: '<trace-id>' } } }
