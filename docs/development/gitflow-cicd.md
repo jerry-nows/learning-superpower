@@ -21,11 +21,13 @@ Do not paste credentials into this file, shell history, command arguments, logs,
 
 Never register a personal self-hosted runner for this public repository. Pull-request code executes only on GitHub-hosted virtual machines with read-only repository permissions unless a narrowly scoped job explicitly needs more. In particular, do not use `pull_request_target` to check out or execute a fork's code with repository credentials.
 
-## Configure SonarQube Cloud Free
+## Configure SonarQube for OSS
 
-Create or import one SonarQube Cloud project for the repository with `sonar.organization=jerry-nows` and `sonar.projectKey=jerry-nows_learning-superpower`. Although SonarSource recommends a project per independently built monorepo component, this repository deliberately uses one combined Swift-and-Go project: the repository ships as one quality unit, the existing scanner produces both coverage reports in one workspace, and one synchronous result gives the aggregate workflow a stable fail-closed dependency. Revisit the model if the components gain independent release lifecycles. SonarQube Cloud's native monorepo PR-blocking behavior must not be assumed to replace the repository's own `Quality Gate`.
+Create or import one SonarQube for OSS project for the repository with `sonar.organization=jerry-nows` and `sonar.projectKey=jerry-nows_learning-superpower`. The Free plan analyzes pull requests only when they target `main`; it is incompatible with the mandatory `feature/* -> develop` path and would leave integration PRs without analysis. SonarQube for OSS supports this public multi-branch GitFlow, including `feature/* -> develop` and release/hotfix PRs to `main`, but only analyzes public repositories. If this repository becomes private, the OSS plan is no longer valid and CI must move to a plan that supports private repositories before merging further changes.
 
-`SONAR_TOKEN` is the only GitHub Actions secret required. SonarQube Cloud Free uses a personal analysis token with Execute Analysis permission for this project. The workflow waits synchronously with `-Dsonar.qualitygate.wait=true`; neither `SONAR_HOST_URL` nor the local preflight is used by cloud CI.
+Although SonarSource recommends a project per independently built monorepo component, this repository deliberately uses one combined Swift-and-Go project: the repository ships as one quality unit, the existing scanner produces both coverage reports in one workspace, and one synchronous result gives the aggregate workflow a stable fail-closed dependency. Revisit the model if the components gain independent release lifecycles. SonarQube Cloud's native monorepo PR-blocking behavior must not be assumed to replace the repository's own `Quality Gate`. Keep Automatic Analysis off so the pinned CI scanner remains the sole analysis path.
+
+`SONAR_TOKEN` is the only GitHub Actions secret required. SonarQube for OSS uses the dedicated analysis token with Execute Analysis permission for this project. The workflow waits synchronously with `-Dsonar.qualitygate.wait=true`; neither `SONAR_HOST_URL` nor the local preflight is used by cloud CI.
 
 ```bash
 read -rs SONAR_TOKEN

@@ -729,7 +729,7 @@ Read both rulesets back with `gh api`, compare every required check context and 
 
 ### Task 16A: Migrate public-PR CI to hosted services
 
-**Approved variance:** Replace the personal self-hosted Mac and local SonarQube dependency for pull-request CI with GitHub-hosted `macos-26` runners and SonarQube Cloud Free. Never register or expose a personal runner to public pull-request code. Keep the loopback-only Docker SonarQube stack as optional local development tooling, not a CI prerequisite.
+**Approved variance:** Replace the personal self-hosted Mac and local SonarQube dependency for pull-request CI with GitHub-hosted `macos-26` runners and SonarQube for OSS. Never register or expose a personal runner to public pull-request code. Keep the loopback-only Docker SonarQube stack as optional local development tooling, not a CI prerequisite.
 
 **Files:**
 - Modify: `.github/workflows/ios.yml`, `.github/workflows/quality.yml`, `.github/workflows/ci.yml`, `sonar-project.properties`
@@ -743,6 +743,20 @@ Read both rulesets back with `gh api`, compare every required check context and 
 4. Retain local Docker SonarQube and its preflight only as optional developer tooling, update architecture/CR/runbook guidance, and verify workflow contracts, Sonar mappings, actionlint, yamllint, and whitespace.
 
 **Definition of Done:** Public pull-request code executes only on fresh GitHub-hosted runners; privileged SonarQube Cloud analysis receives only `SONAR_TOKEN` on trusted events; fork PRs cannot access secrets or satisfy the aggregate gate; no CI job depends on `SONAR_HOST_URL`, a personal runner, or local Docker.
+
+---
+
+### Task 16B: Correct the SonarQube plan for strict GitFlow
+
+**Root cause:** SonarQube Cloud Free analyzes pull requests only when they target `main`. That cannot enforce this repository's required `feature/* -> develop` path, while releases and hotfixes still target `main`.
+
+**Correction:** Use SonarQube for OSS for `jerry-nows_learning-superpower`. The OSS plan supports the repository's public multi-branch GitFlow analysis, but only analyzes public repositories. Automatic Analysis remains off so the pinned CI scanner and synchronous repository `Quality Gate` remain authoritative.
+
+**Files:**
+- Modify: `Infrastructure/ci/tests/validate-workflows_test.sh`, `sonar-project.properties`
+- Modify: `docs/superpowers/plans/2026-07-12-gitflow-cicd.md`, `docs/superpowers/specs/2026-07-12-gitflow-cicd-design.md`, affected Phase 02B CR records, and `docs/development/gitflow-cicd.md`
+
+**Definition of Done:** Documentation and contracts name SonarQube for OSS, explain the Free-plan `main`-target limitation and public-only OSS constraint, and preserve the existing workflow behavior, organization key, project key, and token boundary.
 
 ---
 
