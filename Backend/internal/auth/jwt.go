@@ -150,7 +150,8 @@ func (issuer *JWTIssuer) Verify(encoded string) (AccessTokenClaims, error) {
 	if err != nil || token == nil || !token.Valid {
 		return AccessTokenClaims{}, ErrInvalidAccessToken
 	}
-	if claims.Subject == "" || claims.ID == "" || claims.IssuedAt == nil ||
+	if claims.Subject == "" || strings.TrimSpace(claims.Subject) != claims.Subject ||
+		claims.ID == "" || claims.IssuedAt == nil ||
 		claims.NotBefore == nil || claims.ExpiresAt == nil {
 		return AccessTokenClaims{}, ErrInvalidAccessToken
 	}
