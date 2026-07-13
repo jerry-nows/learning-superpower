@@ -26,6 +26,7 @@ type serviceSessions struct {
 	rotateCurrent                   RefreshSession
 	createErr, rotateErr, revokeErr error
 	rotateDigest                    [32]byte
+	rotateReplacement               RefreshSession
 	revokeID                        UserID
 	gotCtx                          context.Context
 }
@@ -38,10 +39,45 @@ func (r *serviceSessions) Create(ctx context.Context, s RefreshSession) error {
 func (r *serviceSessions) Rotate(ctx context.Context, d [32]byte, s RefreshSession) (RefreshSession, error) {
 	r.gotCtx = ctx
 	r.rotateDigest = d
+	r.rotateReplacement = s
 	if r.rotateErr != nil {
 		return RefreshSession{}, r.rotateErr
 	}
 	return r.rotateCurrent, nil
+}
+
+func TestServiceRepositoryAndContextContracts(t *testing.T) {
+	u := &serviceUsers{err: errors.New("postgres unavailable")}
+	s := testService(t, u, &serviceSessions{}, &serviceIssuer{}, &serviceVerifier{}, deterministicRefreshes(), func() (string, error) { return "f", nil })
+	_, _, err := s.Login(context.Background(), "x", "p")
+	var se *ServiceError
+	if !errors.As(err, &se) || !se.Retryable || se.Code != "repository_failed" || !errors.Is(err, ErrRepository) {
+		t.Fatalf("infra mapping: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	u.err = context.Canceled
+	_, _, err = s.Login(ctx, "x", "p")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancel not preserved: %v", err)
+	}
+}
+
+func TestServiceLoginCreatesDistinctFamilies(t *testing.T) {
+	u := &serviceUsers{record: CredentialRecord{ID: "u", Status: UserStatusActive}}
+	ss := &serviceSessions{}
+	v := &serviceVerifier{ok: true}
+	n := 0
+	s := testService(t, u, ss, &serviceIssuer{}, v, deterministicRefreshes(), func() (string, error) { n++; return "family-" + string(rune('0'+n)), nil })
+	if _, _, err := s.Login(context.Background(), "U@E.COM", "p"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.Login(context.Background(), "U@E.COM", "p"); err != nil {
+		t.Fatal(err)
+	}
+	if len(ss.created) != 2 || ss.created[0].FamilyID == ss.created[1].FamilyID {
+		t.Fatalf("families not distinct: %#v", ss.created)
+	}
 }
 func (r *serviceSessions) RevokeUser(ctx context.Context, id UserID) error {
 	r.gotCtx = ctx
