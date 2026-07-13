@@ -20,7 +20,7 @@ func TestRedisRefreshRepositoryContract(t *testing.T) {
 		t.Fatalf("unsafe digest key: %q", key)
 	}
 	s := RefreshSession{FamilyID: "family", UserID: "user", TokenDigest: d, ExpiresAt: time.Now().Add(time.Minute)}
-	if !validSession(s) {
+	if !validSession(s, time.Now()) {
 		t.Fatal("valid session rejected")
 	}
 }

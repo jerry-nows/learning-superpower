@@ -25,6 +25,8 @@ type RedisRefreshRepository struct {
 	timeout time.Duration
 }
 
+const refreshReplayGrace = 24 * time.Hour
+
 func NewRedisRefreshRepository(client redisSessionClient, operationTimeout time.Duration) (*RedisRefreshRepository, error) {
 	if client == nil || (reflect.ValueOf(client).Kind() == reflect.Ptr && reflect.ValueOf(client).IsNil()) {
 		return nil, errors.New("redis refresh repository client must not be nil")
@@ -44,31 +46,24 @@ func (r *RedisRefreshRepository) opctx(ctx context.Context) (context.Context, co
 	return context.WithTimeout(ctx, r.timeout)
 }
 
-func validSession(s RefreshSession) bool {
-	return strings.TrimSpace(s.FamilyID) != "" && strings.TrimSpace(string(s.UserID)) != "" && s.ExpiresAt.After(time.Now()) && s.TokenDigest != [sha256.Size]byte{}
+func validSession(s RefreshSession, now time.Time) bool {
+	return strings.TrimSpace(s.FamilyID) != "" && strings.TrimSpace(string(s.UserID)) != "" && s.ExpiresAt.After(now) && s.TokenDigest != [sha256.Size]byte{}
 }
+
+const createLua = `local k=KEYS[1]; local fk=KEYS[2]; local uk=KEYS[3]; local now=tonumber(ARGV[1]); local exp=tonumber(ARGV[2]); local digest=ARGV[3]; local family=ARGV[4]; local user=ARGV[5]; local ttl=math.floor((exp-now)*1000+0.999); local retention=ttl+86400000; redis.call('HSET',k,'family_id',family,'user_id',user,'expires_at',exp,'state','active'); redis.call('PEXPIRE',k,retention); redis.call('SADD',fk,digest); redis.call('PEXPIRE',fk,retention); redis.call('SADD',uk,family); redis.call('PEXPIRE',uk,retention); return 1`
 
 func (r *RedisRefreshRepository) Create(ctx context.Context, s RefreshSession) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if !validSession(s) {
+	now := time.Now().UTC()
+	if !validSession(s, now) {
 		return errors.Join(ErrRepository, errors.New("invalid refresh session"))
 	}
 	c, cancel := r.opctx(ctx)
 	defer cancel()
-	key := digestKey(s.TokenDigest)
-	if err := r.client.HSet(c, key, "family_id", s.FamilyID, "user_id", string(s.UserID), "expires_at", s.ExpiresAt.UTC().Unix(), "state", "active").Err(); err != nil {
-		return mapRedisError(c, err)
-	}
-	ttl := time.Until(s.ExpiresAt)
-	if err := r.client.PExpire(c, key, ttl).Err(); err != nil {
-		return mapRedisError(c, err)
-	}
-	if err := r.client.SAdd(c, familyKey(s.FamilyID), hex.EncodeToString(s.TokenDigest[:])).Err(); err != nil {
-		return mapRedisError(c, err)
-	}
-	if err := r.client.SAdd(c, userKey(s.UserID), s.FamilyID).Err(); err != nil {
+	_, err := r.client.Eval(c, createLua, []string{digestKey(s.TokenDigest), familyKey(s.FamilyID), userKey(s.UserID)}, now.Unix(), s.ExpiresAt.UTC().Unix(), hex.EncodeToString(s.TokenDigest[:]), s.FamilyID, string(s.UserID)).Result()
+	if err != nil {
 		return mapRedisError(c, err)
 	}
 	return nil
@@ -89,7 +84,7 @@ local exp = tonumber(redis.call('HGET', old, 'expires_at') or '0')
 local state = redis.call('HGET', old, 'state') or 'revoked'
 local revoked = redis.call('GET', famstate)
 local function revoke()
-  redis.call('SET', famstate, 'revoked')
+  redis.call('SET', famstate, 'revoked', 'PX', 86400000)
   for _, d in ipairs(redis.call('SMEMBERS', famset)) do redis.call('HSET', 'auth:refresh:session:' .. d, 'state', 'revoked') end
 end
 if exp <= now then revoke(); return {2} end
@@ -98,13 +93,15 @@ if state ~= 'active' then revoke(); return {3} end
 redis.call('HSET', old, 'state', 'consumed')
 local nk = 'auth:refresh:session:' .. replacement
 redis.call('HSET', nk, 'family_id', family, 'user_id', user, 'expires_at', replacement_exp, 'state', 'active')
-redis.call('PEXPIRE', nk, replacement_ttl)
+redis.call('PEXPIRE', nk, math.floor(replacement_ttl + 0.999) + 86400000)
 redis.call('SADD', famset, replacement)
+redis.call('PEXPIRE', famset, math.floor(replacement_ttl + 0.999) + 86400000)
 return {1, family, user, replacement_exp}
 `
 
 func (r *RedisRefreshRepository) Rotate(ctx context.Context, presented [sha256.Size]byte, replacement RefreshSession) (RefreshSession, error) {
-	if presented == [sha256.Size]byte{} || replacement.TokenDigest == [sha256.Size]byte{} || replacement.ExpiresAt.Before(time.Now()) {
+	now := time.Now().UTC()
+	if presented == [sha256.Size]byte{} || replacement.TokenDigest == [sha256.Size]byte{} || replacement.TokenDigest == presented || !replacement.ExpiresAt.After(now) {
 		return RefreshSession{}, errors.Join(ErrRepository, errors.New("invalid refresh rotation"))
 	}
 	c, cancel := r.opctx(ctx)
@@ -112,7 +109,8 @@ func (r *RedisRefreshRepository) Rotate(ctx context.Context, presented [sha256.S
 	d := hex.EncodeToString(presented[:])
 	rd := hex.EncodeToString(replacement.TokenDigest[:])
 	// Family/user are authoritative from the old record; placeholders are not trusted.
-	res, err := r.client.Eval(c, rotateLua, []string{digestKey(presented)}, time.Now().UTC().Unix(), rd, replacement.ExpiresAt.UTC().Unix(), strconv.FormatInt(time.Until(replacement.ExpiresAt).Milliseconds(), 10)).Result()
+	ttlMs := float64(replacement.ExpiresAt.Sub(now).Microseconds()) / 1000
+	res, err := r.client.Eval(c, rotateLua, []string{digestKey(presented)}, now.Unix(), rd, replacement.ExpiresAt.UTC().Unix(), strconv.FormatFloat(ttlMs, 'f', 3, 64)).Result()
 	if err != nil {
 		return RefreshSession{}, mapRedisError(c, err)
 	}
