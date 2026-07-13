@@ -46,7 +46,8 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/quality.yml
-    secrets: inherit
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   quality-gate:
     name: Quality Gate

@@ -83,7 +83,7 @@ for required_text in \
   'uses: ./.github/workflows/ios.yml' \
   'uses: ./.github/workflows/security.yml' \
   'uses: ./.github/workflows/quality.yml' \
-  'secrets: inherit' \
+  'SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}' \
   'name: Quality Gate' \
   'if: always()' \
   'needs: [policy, backend, ios, security, sonarqube]' \
@@ -98,6 +98,11 @@ for required_text in \
   fi
 done
 
+if grep -Fq 'secrets: inherit' "$ci_workflow"; then
+  echo "ci.yml must pass only the named SonarQube secret" >&2
+  exit 1
+fi
+
 if [[ "$(grep -Fc 'branches: [main, develop]' "$ci_workflow")" -ne 2 ]]; then
   echo "ci.yml must limit both pull requests and pushes to main/develop" >&2
   exit 1
@@ -105,6 +110,10 @@ fi
 
 for required_text in \
   'workflow_call:' \
+  'secrets:' \
+  'SONAR_TOKEN:' \
+  'description: SonarQube authentication token' \
+  'required: true' \
   'name: SonarQube' \
   'runs-on: [self-hosted, macOS, ARM64, "${{ '\''commerce-ios'\'' }}"]' \
   'SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}' \
@@ -131,7 +140,7 @@ if grep -E 'uses: [^[:space:]]+@' "$quality_workflow" \
 fi
 
 if [[ "$(grep -Fc 'SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}' "$quality_workflow")" -ne 2 ]]; then
-  echo "quality.yml must scope SONAR_TOKEN to the preflight and scanner environments" >&2
+  echo "quality.yml must scope SONAR_TOKEN references to the preflight and scanner environments" >&2
   exit 1
 fi
 
