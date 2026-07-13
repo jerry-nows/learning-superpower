@@ -33,4 +33,7 @@ func TestRedisRefreshRepositoryContract(t *testing.T) {
 			t.Fatalf("rotate script missing collision/ttl marker %q", marker)
 		}
 	}
+	if !strings.Contains(rotateLua, "auth:refresh:user:' .. user") {
+		t.Fatal("rotate script must retain authoritative user index")
+	}
 }

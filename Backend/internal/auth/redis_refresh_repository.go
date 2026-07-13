@@ -102,6 +102,7 @@ redis.call('HSET', nk, 'family_id', family, 'user_id', user, 'expires_at', repla
 redis.call('PEXPIRE', nk, math.floor(replacement_ttl + 0.999) + 86400000)
 redis.call('SADD', famset, replacement)
 redis.call('PEXPIRE', famset, math.floor(replacement_ttl + 0.999) + 86400000)
+redis.call('PEXPIRE', 'auth:refresh:user:' .. user, math.floor(replacement_ttl + 0.999) + 86400000)
 return {1, family, user, replacement_exp}
 `
 
