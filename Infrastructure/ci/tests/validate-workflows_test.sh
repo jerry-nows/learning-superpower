@@ -266,10 +266,13 @@ for required_text in \
   'SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}' \
   'go test -race -coverprofile=coverage.out ./...' \
   '-enableCodeCoverage YES' \
+  '-resultBundlePath "$GITHUB_WORKSPACE/Build/coverage/Core.xcresult"' \
+  '-resultBundlePath "$GITHUB_WORKSPACE/Build/coverage/DesignSystem.xcresult"' \
   '-resultBundlePath Build/coverage/CommerceApp.xcresult' \
-  'rm -rf Build/coverage/CommerceApp.xcresult' \
+  'Build/reports/core-coverage.xml' \
+  'Build/reports/design-system-coverage.xml' \
+  'Build/reports/commerce-app-coverage.xml' \
   'Infrastructure/ci/xccov-to-sonarqube.sh' \
-  'Build/reports/swift-coverage.xml' \
   'uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e' \
   '-Dsonar.qualitygate.wait=true'; do
   if ! grep -Fq -- "$required_text" "$quality_workflow"; then

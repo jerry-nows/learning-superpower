@@ -69,7 +69,7 @@ assert_property 'sonar.sources' 'Backend,Apps,Packages'
 assert_property 'sonar.tests' 'Backend,Apps,Packages'
 assert_property 'sonar.test.inclusions' 'Backend/**/*_test.go,Apps/**/Tests/**/*.swift,Apps/**/UITests/**/*.swift,Packages/**/Tests/**/*.swift'
 assert_property 'sonar.go.coverage.reportPaths' 'Backend/coverage.out'
-assert_property 'sonar.coverageReportPaths' 'Build/reports/swift-coverage.xml'
+assert_property 'sonar.coverageReportPaths' 'Build/reports/core-coverage.xml,Build/reports/design-system-coverage.xml,Build/reports/commerce-app-coverage.xml'
 assert_property 'sonar.exclusions' '**/.build/**,**/Derived/**,**/*.xcodeproj/**,**/*.xcworkspace/**,Backend/**/*_test.go,Apps/**/Tests/**,Apps/**/UITests/**,Packages/**/Tests/**'
 
 exclusions="$(property_values 'sonar.exclusions')"

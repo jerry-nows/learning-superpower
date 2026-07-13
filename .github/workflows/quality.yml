@@ -49,7 +49,26 @@ jobs:
       - name: Generate Swift coverage
         run: |
           mkdir -p Build/coverage Build/reports
-          rm -rf Build/coverage/CommerceApp.xcresult
+          rm -rf \
+            Build/coverage/Core.xcresult \
+            Build/coverage/DesignSystem.xcresult \
+            Build/coverage/CommerceApp.xcresult
+          (
+            cd Packages/Core
+            xcodebuild -scheme Core \
+              -destination 'platform=iOS Simulator,name=iPhone 17' \
+              -enableCodeCoverage YES \
+              -resultBundlePath "$GITHUB_WORKSPACE/Build/coverage/Core.xcresult" \
+              test CODE_SIGNING_ALLOWED=NO
+          )
+          (
+            cd Packages/DesignSystem
+            xcodebuild -scheme DesignSystem \
+              -destination 'platform=iOS Simulator,name=iPhone 17' \
+              -enableCodeCoverage YES \
+              -resultBundlePath "$GITHUB_WORKSPACE/Build/coverage/DesignSystem.xcresult" \
+              test CODE_SIGNING_ALLOWED=NO
+          )
           xcodebuild -workspace Commerce.xcworkspace \
             -scheme CommerceApp \
             -destination 'platform=iOS Simulator,name=iPhone 17' \
@@ -57,10 +76,16 @@ jobs:
             -resultBundlePath Build/coverage/CommerceApp.xcresult \
             test CODE_SIGNING_ALLOWED=NO
       - name: Convert Swift coverage for SonarQube
-        run: >-
-          Infrastructure/ci/xccov-to-sonarqube.sh
-          Build/coverage/CommerceApp.xcresult
-          Build/reports/swift-coverage.xml
+        run: |
+          Infrastructure/ci/xccov-to-sonarqube.sh \
+            Build/coverage/Core.xcresult \
+            Build/reports/core-coverage.xml
+          Infrastructure/ci/xccov-to-sonarqube.sh \
+            Build/coverage/DesignSystem.xcresult \
+            Build/reports/design-system-coverage.xml
+          Infrastructure/ci/xccov-to-sonarqube.sh \
+            Build/coverage/CommerceApp.xcresult \
+            Build/reports/commerce-app-coverage.xml
       - name: Scan and wait for Quality Gate
         uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e
         env:
