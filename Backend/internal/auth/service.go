@@ -27,6 +27,10 @@ type UserRepository interface {
 
 type RefreshSessionRepository interface {
 	Create(context.Context, RefreshSession) error
+	// Rotate must atomically locate the presented digest, reject/revoke expired
+	// or reused sessions, copy its authoritative FamilyID and UserID into the
+	// replacement, then store the replacement digest/expiry. The returned
+	// session must contain non-empty authoritative family and user identifiers.
 	Rotate(context.Context, [sha256.Size]byte, RefreshSession) (RefreshSession, error)
 	RevokeUser(context.Context, UserID) error
 }
