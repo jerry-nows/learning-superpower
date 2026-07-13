@@ -1,8 +1,15 @@
 package main
 
 import (
+	"context"
+	"database/sql"
+	"io/fs"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 func TestParseAPIConfigRequiresSecretsAndUsesSafeDefaults(t *testing.T) {
@@ -13,6 +20,35 @@ func TestParseAPIConfigRequiresSecretsAndUsesSafeDefaults(t *testing.T) {
 	}
 	if c.port != "8080" || c.migrationsDir != "migrations" {
 		t.Fatalf("unsafe defaults: %#v", c)
+	}
+}
+
+func TestBuildApplicationRejectsMissingMigrationDirectoryBeforeOpeners(t *testing.T) {
+	opened := false
+	deps := startupDependencies{openSQL: func(context.Context, string) (*sql.DB, error) { opened = true; return nil, nil }, openPool: func(context.Context, string) (*pgxpool.Pool, error) { return nil, nil }, newRedis: func(string) (*redis.Client, error) { return nil, nil }, runMigrations: func(context.Context, *sql.DB, fs.FS) error { return nil }}
+	cfg := apiConfig{databaseURL: "db", redisURL: "redis://localhost", jwtSigningKey: strings.Repeat("k", 32), jwtIssuer: "issuer", jwtAudience: "aud", migrationsDir: t.TempDir() + "/missing"}
+	if _, err := buildApplication(context.Background(), cfg, deps); err == nil {
+		t.Fatal("expected missing migration directory error")
+	}
+	if opened {
+		t.Fatal("database opener called before migration directory validation")
+	}
+}
+
+func TestBuildApplicationClosesSQLWhenStartupFails(t *testing.T) {
+	dir := t.TempDir()
+	closed := 0
+	deps := productionDependencies()
+	deps.openSQL = func(context.Context, string) (*sql.DB, error) { return sql.Open("pgx", "postgres://127.0.0.1:1/db") }
+	deps.closeSQL = func(db *sql.DB) { closed++; _ = db.Close() }
+	cfg := apiConfig{databaseURL: "db", redisURL: "redis://localhost", jwtSigningKey: strings.Repeat("k", 32), jwtIssuer: "issuer", jwtAudience: "aud", migrationsDir: dir}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	if _, err := buildApplication(ctx, cfg, deps); err == nil {
+		t.Fatal("expected startup failure")
+	}
+	if closed != 1 {
+		t.Fatalf("sql close count = %d, want 1", closed)
 	}
 }
 

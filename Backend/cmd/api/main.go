@@ -53,6 +53,7 @@ type startupDependencies struct {
 	openPool      func(context.Context, string) (*pgxpool.Pool, error)
 	newRedis      func(string) (*redis.Client, error)
 	runMigrations func(context.Context, *sql.DB, fs.FS) error
+	closeSQL      func(*sql.DB)
 }
 
 func productionDependencies() startupDependencies {
@@ -67,14 +68,16 @@ func productionDependencies() startupDependencies {
 			return redis.NewClient(opts), nil
 		},
 		runMigrations: migration.RunUp,
+		closeSQL:      func(db *sql.DB) { _ = db.Close() },
 	}
 }
 
 type application struct {
-	server *http.Server
-	sqlDB  *sql.DB
-	pool   *pgxpool.Pool
-	redis  *redis.Client
+	server   *http.Server
+	sqlDB    *sql.DB
+	pool     *pgxpool.Pool
+	redis    *redis.Client
+	closeSQL func(*sql.DB)
 }
 
 func (a *application) close() {
@@ -85,7 +88,11 @@ func (a *application) close() {
 		a.pool.Close()
 	}
 	if a.sqlDB != nil {
-		_ = a.sqlDB.Close()
+		if a.closeSQL != nil {
+			a.closeSQL(a.sqlDB)
+		} else {
+			_ = a.sqlDB.Close()
+		}
 	}
 }
 
@@ -93,11 +100,14 @@ func buildApplication(ctx context.Context, cfg apiConfig, deps startupDependenci
 	if deps.openSQL == nil || deps.openPool == nil || deps.newRedis == nil || deps.runMigrations == nil {
 		return nil, errors.New("startup dependencies unavailable")
 	}
+	if err := validateMigrationDir(cfg.migrationsDir); err != nil {
+		return nil, errors.New("migration configuration failed")
+	}
 	sqlDB, err := deps.openSQL(ctx, cfg.databaseURL)
 	if err != nil || sqlDB == nil {
 		return nil, errors.New("database startup failed")
 	}
-	a := &application{sqlDB: sqlDB}
+	a := &application{sqlDB: sqlDB, closeSQL: deps.closeSQL}
 	cleanup := true
 	defer func() {
 		if cleanup {
@@ -147,6 +157,14 @@ func buildApplication(ctx context.Context, cfg apiConfig, deps startupDependenci
 	a.server = server
 	cleanup = false
 	return a, nil
+}
+
+func validateMigrationDir(path string) error {
+	info, err := os.Stat(path)
+	if err != nil || !info.IsDir() {
+		return errors.New("migration directory unavailable")
+	}
+	return nil
 }
 
 func pingWithTimeout(parent context.Context, ping func(context.Context) error) error {
