@@ -3,8 +3,10 @@ package auth
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -85,6 +87,10 @@ func TestRedisRefreshRepositoryAuthenticatedIntegration(t *testing.T) {
 		if err := repo.Create(ctx, old); err != nil {
 			t.Fatal(err)
 		}
+		sibling := refreshSession("sibling-atomic", old.FamilyID, now.Add(10*time.Minute))
+		if err := repo.Create(ctx, sibling); err != nil {
+			t.Fatal(err)
+		}
 		var wg sync.WaitGroup
 		errs := make(chan error, 8)
 		success := make(chan RefreshSession, 8)
@@ -128,12 +134,45 @@ func TestRedisRefreshRepositoryAuthenticatedIntegration(t *testing.T) {
 		if family, _ := client.HGet(ctx, digestKey(old.TokenDigest), "family_id").Result(); family != old.FamilyID {
 			t.Fatal("family id changed")
 		}
-		if keys, _ := client.Keys(ctx, "*").Result(); len(keys) > 0 {
-			for _, key := range keys {
-				if key == old.FamilyID || key == "old-atomic" {
-					t.Fatalf("raw token material in Redis key: %q", key)
-				}
+		for label, presented := range map[string][sha256.Size]byte{"replacement": got.TokenDigest, "sibling": sibling.TokenDigest} {
+			_, err := repo.Rotate(ctx, presented, refreshSession("post-revoke-"+label, old.FamilyID, now.Add(time.Minute)))
+			if !errors.Is(err, ErrRefreshFamilyRevoked) && !errors.Is(err, ErrRefreshTokenReuse) {
+				t.Fatalf("revoked family %s accepted rotation: %v", label, err)
 			}
+		}
+		if exists, _ := client.Exists(ctx, digestKey(refreshDigest("post-revoke-replacement"))).Result(); exists != 0 {
+			t.Fatal("revoked-family rotations must not resurrect replacement sessions")
+		}
+
+		opaque, err := NewRefreshToken(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		digest := opaque.Digest()
+		scanSession := RefreshSession{FamilyID: "family-scan", UserID: old.UserID, TokenDigest: digest, ExpiresAt: now.Add(10 * time.Minute)}
+		if err := repo.Create(ctx, scanSession); err != nil {
+			t.Fatal(err)
+		}
+		var scanned []string
+		iter := client.Scan(ctx, 0, "auth:refresh:*", 0).Iterator()
+		for iter.Next(ctx) {
+			scanned = append(scanned, iter.Val())
+		}
+		if err := iter.Err(); err != nil {
+			t.Fatal(err)
+		}
+		digestHex := hex.EncodeToString(digest[:])
+		foundDigest := false
+		for _, key := range scanned {
+			if strings.Contains(key, opaque.Encoded()) {
+				t.Fatalf("raw encoded refresh token leaked into Redis key: %q", key)
+			}
+			if strings.Contains(key, digestHex) {
+				foundDigest = true
+			}
+		}
+		if !foundDigest {
+			t.Fatalf("digest-only session key not found in SCAN results: %v", scanned)
 		}
 	})
 
