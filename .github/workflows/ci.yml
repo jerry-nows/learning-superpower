@@ -1,0 +1,64 @@
+---
+name: Continuous Integration
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  policy:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/pr-policy.yml
+    with:
+      base_ref: ${{ github.event_name == 'pull_request' && github.base_ref || 'develop' }}
+      head_ref: ${{ github.event_name == 'pull_request' && github.head_ref || 'feature/ci-validation' }}
+      is_draft: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft || false }}
+      pr_title: "${{ github.event_name == 'pull_request' && github.event.pull_request.title || 'ci: validate branch' }}"
+
+  backend:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/backend.yml
+
+  ios:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ios.yml
+
+  security:
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/security.yml
+
+  sonarqube:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/quality.yml
+    secrets: inherit
+
+  quality-gate:
+    name: Quality Gate
+    if: always()
+    needs: [policy, backend, ios, security, sonarqube]
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Enforce required workflow results
+        run: |
+          test '${{ needs.policy.result }}' = success
+          test '${{ needs.backend.result }}' = success
+          test '${{ needs.ios.result }}' = success
+          test '${{ needs.security.result }}' = success
+          test '${{ needs.sonarqube.result }}' = success

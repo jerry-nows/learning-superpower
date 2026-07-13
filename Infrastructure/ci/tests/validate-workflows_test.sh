@@ -9,6 +9,7 @@ backend_workflow="$workflow_dir/backend.yml"
 ios_workflow="$workflow_dir/ios.yml"
 security_workflow="$workflow_dir/security.yml"
 quality_workflow="$workflow_dir/quality.yml"
+ci_workflow="$workflow_dir/ci.yml"
 invalid_workflow="$workflow_dir/invalid-workflow-fixture.yml"
 invalid_shell="$repo_root/Infrastructure/ci/invalid-shell-fixture.sh"
 created_github_dir=false
@@ -56,6 +57,49 @@ fi
 
 if [[ ! -f "$quality_workflow" ]]; then
   echo "required workflow is missing: .github/workflows/quality.yml" >&2
+  exit 1
+fi
+
+if [[ ! -f "$ci_workflow" ]]; then
+  echo "required workflow is missing: .github/workflows/ci.yml" >&2
+  exit 1
+fi
+
+for required_text in \
+  'name: Continuous Integration' \
+  'pull_request:' \
+  'branches: [main, develop]' \
+  'push:' \
+  'workflow_dispatch:' \
+  'contents: read' \
+  'group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}' \
+  'cancel-in-progress: true' \
+  'uses: ./.github/workflows/pr-policy.yml' \
+  "base_ref: \${{ github.event_name == 'pull_request' && github.base_ref || 'develop' }}" \
+  "head_ref: \${{ github.event_name == 'pull_request' && github.head_ref || 'feature/ci-validation' }}" \
+  "is_draft: \${{ github.event_name == 'pull_request' && github.event.pull_request.draft || false }}" \
+  "pr_title: \"\${{ github.event_name == 'pull_request' && github.event.pull_request.title || 'ci: validate branch' }}\"" \
+  'uses: ./.github/workflows/backend.yml' \
+  'uses: ./.github/workflows/ios.yml' \
+  'uses: ./.github/workflows/security.yml' \
+  'uses: ./.github/workflows/quality.yml' \
+  'secrets: inherit' \
+  'name: Quality Gate' \
+  'if: always()' \
+  'needs: [policy, backend, ios, security, sonarqube]' \
+  "test '\${{ needs.policy.result }}' = success" \
+  "test '\${{ needs.backend.result }}' = success" \
+  "test '\${{ needs.ios.result }}' = success" \
+  "test '\${{ needs.security.result }}' = success" \
+  "test '\${{ needs.sonarqube.result }}' = success"; do
+  if ! grep -Fq -- "$required_text" "$ci_workflow"; then
+    echo "ci.yml is missing required text: $required_text" >&2
+    exit 1
+  fi
+done
+
+if [[ "$(grep -Fc 'branches: [main, develop]' "$ci_workflow")" -ne 2 ]]; then
+  echo "ci.yml must limit both pull requests and pushes to main/develop" >&2
   exit 1
 fi
 
