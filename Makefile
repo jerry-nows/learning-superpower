@@ -60,7 +60,7 @@ ci-validate:
 	@bash Infrastructure/ci/tests/makefile_ci_test.sh
 
 ci-backend:
-	@cd Backend && unformatted="$$(gofmt -l .)"; \
+	@cd Backend && unformatted="$$(mise exec -- gofmt -l .)"; \
 		if [[ -n "$$unformatted" ]]; then \
 			printf 'The following Go files require gofmt:\n%s\n' "$$unformatted" >&2; \
 			exit 1; \
