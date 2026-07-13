@@ -29,12 +29,11 @@ var (
 // JWTConfig contains the security boundary required to issue and verify access
 // tokens. SigningKey must contain at least 256 bits of secret material.
 type JWTConfig struct {
-	SigningKey []byte
-	Issuer     string
-	Audience   string
-	Leeway     time.Duration
-	Clock      func() time.Time
-	Random     io.Reader
+	SigningKey []byte           `json:"-"`
+	Issuer     string           `json:"issuer"`
+	Audience   string           `json:"audience"`
+	Clock      func() time.Time `json:"-"`
+	Random     io.Reader        `json:"-"`
 }
 
 // IssuedAccessToken carries the encoded token and its explicit expiry so the
@@ -60,7 +59,6 @@ type JWTIssuer struct {
 	signingKey []byte
 	issuer     string
 	audience   string
-	leeway     time.Duration
 	clock      func() time.Time
 	random     io.Reader
 }
@@ -77,10 +75,6 @@ func NewJWTIssuer(config JWTConfig) (*JWTIssuer, error) {
 	if config.Audience == "" || strings.TrimSpace(config.Audience) != config.Audience {
 		return nil, ErrInvalidJWTConfig
 	}
-	if config.Leeway < 0 {
-		return nil, ErrInvalidJWTConfig
-	}
-
 	clock := config.Clock
 	if clock == nil {
 		clock = time.Now
@@ -94,7 +88,6 @@ func NewJWTIssuer(config JWTConfig) (*JWTIssuer, error) {
 		signingKey: append([]byte(nil), config.SigningKey...),
 		issuer:     config.Issuer,
 		audience:   config.Audience,
-		leeway:     config.Leeway,
 		clock:      clock,
 		random:     random,
 	}, nil
@@ -146,7 +139,6 @@ func (issuer *JWTIssuer) Verify(encoded string) (AccessTokenClaims, error) {
 		jwt.WithAudience(issuer.audience),
 		jwt.WithExpirationRequired(),
 		jwt.WithIssuedAt(),
-		jwt.WithLeeway(issuer.leeway),
 		jwt.WithTimeFunc(func() time.Time { return issuer.clock().UTC() }),
 	)
 	token, err := parser.ParseWithClaims(encoded, &claims, func(token *jwt.Token) (any, error) {
