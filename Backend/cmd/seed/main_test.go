@@ -2,10 +2,21 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"io/fs"
+	"os"
 	"strings"
 	"testing"
+	"time"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/testcontainers/testcontainers-go"
+	postgrescontainer "github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/vominhtri1049/learning-superpower/backend/internal/auth"
+	"github.com/vominhtri1049/learning-superpower/backend/internal/platform/migration"
 )
 
 type fakeSeedDB struct {
@@ -81,6 +92,122 @@ func TestSeedFailsClosedOnHashOrPingFailure(t *testing.T) {
 	}
 	if !db.closed {
 		t.Fatal("database was not closed")
+	}
+}
+
+func TestSeedHashFailureDoesNotExecute(t *testing.T) {
+	db := &fakeSeedDB{}
+	env := map[string]string{"DATABASE_URL": "dsn", "SEED_USER_EMAIL": "user@example.com", "SEED_USER_PASSWORD": "SuperSecret123!"}
+	err := run(context.Background(), func(k string) string { return env[k] }, nil, new(strings.Builder), func(context.Context, string) (seedDB, error) { return db, nil }, &fakeSeedHasher{err: errors.New("hash failure")})
+	if err == nil || db.query != "" {
+		t.Fatalf("hash failure = %v, query=%q", err, db.query)
+	}
+}
+
+func TestSeedPingSuccessHashFailureDoesNotExecute(t *testing.T) {
+	db := &fakeSeedDB{}
+	env := map[string]string{"DATABASE_URL": "dsn", "SEED_USER_EMAIL": "user@example.com", "SEED_USER_PASSWORD": "SuperSecret123!"}
+	err := run(context.Background(), func(k string) string { return env[k] }, nil, new(strings.Builder), func(context.Context, string) (seedDB, error) { return db, nil }, &fakeSeedHasher{err: errors.New("hash failure")})
+	if err == nil || db.query != "" {
+		t.Fatalf("hash failure = %v, query=%q", err, db.query)
+	}
+}
+
+func TestSeedRejectsMissingOrInvalidEnvironmentIndividually(t *testing.T) {
+	base := map[string]string{"DATABASE_URL": "dsn", "SEED_USER_EMAIL": "user@example.com", "SEED_USER_PASSWORD": "SuperSecret123!"}
+	for _, tc := range []struct{ name, key, value string }{
+		{"missing database URL", "DATABASE_URL", ""}, {"missing email", "SEED_USER_EMAIL", ""}, {"invalid email", "SEED_USER_EMAIL", "not-an-email"},
+		{"missing password", "SEED_USER_PASSWORD", ""}, {"weak password", "SEED_USER_PASSWORD", "short"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env := map[string]string{}
+			for k, v := range base {
+				env[k] = v
+			}
+			env[tc.key] = tc.value
+			out := new(strings.Builder)
+			if err := run(context.Background(), func(k string) string { return env[k] }, nil, out, nil, nil); err == nil {
+				t.Fatal("expected validation failure")
+			}
+			if strings.Contains(out.String(), tc.value) && tc.value != "" {
+				t.Fatalf("value leaked: %q", out.String())
+			}
+		})
+	}
+}
+
+func TestSeedOpenAndExecFailuresAreGeneric(t *testing.T) {
+	env := map[string]string{"DATABASE_URL": "postgres://dsn-secret", "SEED_USER_EMAIL": "user@example.com", "SEED_USER_PASSWORD": "SuperSecret123!"}
+	for _, tc := range []struct {
+		name string
+		open seedDBFactory
+		db   *fakeSeedDB
+	}{
+		{"open", func(context.Context, string) (seedDB, error) { return nil, errors.New("dsn-secret") }, nil},
+		{"exec", func(context.Context, string) (seedDB, error) {
+			return &fakeSeedDB{execErr: errors.New("password-hash-secret")}, nil
+		}, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out := new(strings.Builder)
+			db := tc.db
+			open := tc.open
+			if tc.name == "exec" {
+				db = &fakeSeedDB{execErr: errors.New("password-hash-secret")}
+				open = func(context.Context, string) (seedDB, error) { return db, nil }
+			}
+			if err := run(context.Background(), func(k string) string { return env[k] }, nil, out, open, &fakeSeedHasher{hash: "hash"}); err == nil {
+				t.Fatal("expected failure")
+			}
+			if strings.Contains(out.String(), "dsn-secret") || strings.Contains(out.String(), "password-hash-secret") {
+				t.Fatalf("secret leaked: %q", out.String())
+			}
+		})
+	}
+}
+
+func TestSeedPostgresIsIdempotent(t *testing.T) {
+	testcontainers.SkipIfProviderIsNotHealthy(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	c, err := postgrescontainer.Run(ctx, "postgres:16-alpine", postgrescontainer.WithDatabase("seed_test"), postgrescontainer.WithUsername("seed_user"), postgrescontainer.WithPassword("seed_password"), postgrescontainer.BasicWaitStrategies())
+	if err != nil {
+		t.Skipf("Docker unavailable: %v", err)
+	}
+	testcontainers.CleanupContainer(t, c)
+	dsn, err := c.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := sql.Open("pgx", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	if err := sqlDB.PingContext(ctx); err != nil {
+		t.Fatal(err)
+	}
+	migrations := os.DirFS("../../migrations")
+	if _, err := fs.Stat(migrations, "000001_auth.sql"); err != nil {
+		t.Fatal(err)
+	}
+	if err := migration.RunUp(ctx, sqlDB, migrations); err != nil {
+		t.Fatal(err)
+	}
+	env := map[string]string{"DATABASE_URL": dsn, "SEED_USER_EMAIL": " Demo@Example.COM ", "SEED_USER_PASSWORD": "DemoPassword123!"}
+	open := func(ctx context.Context, dsn string) (seedDB, error) { return pgxpool.New(ctx, dsn) }
+	for i := 0; i < 2; i++ {
+		if err := run(ctx, func(k string) string { return env[k] }, nil, new(strings.Builder), open, auth.NewPasswordHasher()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var count int
+	var email, status, hash string
+	if err := sqlDB.QueryRowContext(ctx, `SELECT COUNT(*), MIN(email), MIN(status), MIN(password_hash) FROM users`).Scan(&count, &email, &status, &hash); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 || email != "demo@example.com" || status != "active" || hash == "" {
+		t.Fatalf("seed row = %d %q %q hash=%t", count, email, status, hash != "")
 	}
 }
 
