@@ -1,0 +1,60 @@
+---
+name: iOS
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    name: iOS
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90
+        with:
+          xcode-version: 26.6
+      - name: Install pinned tools
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d
+      - name: Preflight iOS runner
+        run: Infrastructure/ci/preflight-ios-runner.sh
+      - name: Boot iPhone 17 Simulator
+        run: |
+          xcrun simctl boot "iPhone 17" || true
+          xcrun simctl bootstatus "iPhone 17" -b
+      - name: Run SwiftLint
+        run: mise exec -- swiftlint lint --strict
+      - name: Test Swift packages
+        run: |
+          mkdir -p TestResults
+          make ios-test-packages 2>&1 | tee TestResults/package-tests.log
+      - name: Generate Xcode workspace
+        run: make ios-generate
+      - name: Test CommerceApp
+        run: |
+          xcodebuild -workspace Commerce.xcworkspace \
+            -scheme CommerceApp \
+            -destination 'platform=iOS Simulator,name=iPhone 17' \
+            -resultBundlePath TestResults/CommerceApp.xcresult \
+            test CODE_SIGNING_ALLOWED=NO 2>&1 | tee TestResults/commerce-app-tests.log
+      - name: Build CommerceApp without signing
+        run: make ios-build-unsigned 2>&1 | tee TestResults/unsigned-build.log
+      - name: Upload iOS failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ios-failure-diagnostics
+          path: |
+            TestResults/*.log
+            TestResults/*.xcresult
+          if-no-files-found: warn
+          retention-days: 7

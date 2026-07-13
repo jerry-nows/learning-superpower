@@ -1,2 +1,4 @@
 [tools]
 go = "1.26.5"
+swiftlint = "0.65.0"
+tuist = "4.202.1"

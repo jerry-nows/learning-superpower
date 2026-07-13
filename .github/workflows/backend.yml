@@ -1,0 +1,47 @@
+---
+name: Backend
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: Backend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Set up Go
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
+        with:
+          go-version-file: Backend/go.mod
+          cache: true
+          cache-dependency-path: Backend/go.mod
+      - name: Check formatting
+        shell: bash
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [[ -n "$unformatted" ]]; then
+            printf 'The following Go files require gofmt:\n%s\n' "$unformatted" >&2
+            exit 1
+          fi
+      - name: Run go vet
+        run: go vet ./...
+      - name: Install staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@2025.1.1
+      - name: Run staticcheck
+        run: staticcheck ./...
+      - name: Run tests with race detection and coverage
+        run: go test -race -coverprofile=coverage.out ./...
+      - name: Upload backend coverage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: backend-coverage
+          path: Backend/coverage.out
+          if-no-files-found: error

@@ -1,0 +1,45 @@
+strict: true
+
+included:
+  - Apps
+  - Packages
+  - Tuist.swift
+  - Workspace.swift
+
+excluded:
+  - .build
+  - .worktrees
+  - DerivedData
+  - Packages/**/.build
+  - Tuist/.build
+
+opt_in_rules:
+  - empty_count
+  - empty_string
+  - first_where
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - sorted_imports
+
+line_length:
+  warning: 120
+  error: 160
+  ignores_comments: true
+  ignores_urls: true
+
+function_body_length:
+  warning: 40
+  error: 80
+
+type_body_length:
+  warning: 250
+  error: 400
+
+file_length:
+  warning: 400
+  error: 600
+
+identifier_name:
+  min_length: 2
+  excluded:
+    - id

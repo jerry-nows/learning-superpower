@@ -1,0 +1,46 @@
+name: learning-superpower-sonarqube
+
+services:
+  sonarqube:
+    image: sonarqube:26.7.0.124771-community@sha256:160bd2f6a3485bd09b655ef22dd63c02bd1fa7ba82aa5d9973fd010b8bcca0b3
+    depends_on:
+      sonar-db:
+        condition: service_healthy
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonar-db:5432/${SONAR_POSTGRES_DB:?set SONAR_POSTGRES_DB}
+      SONAR_JDBC_USERNAME: ${SONAR_POSTGRES_USER:?set SONAR_POSTGRES_USER}
+      SONAR_JDBC_PASSWORD: ${SONAR_POSTGRES_PASSWORD:?set SONAR_POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:${SONAR_PORT:-9000}:9000"
+    volumes:
+      - sonar_data:/opt/sonarqube/data
+      - sonar_extensions:/opt/sonarqube/extensions
+      - sonar_logs:/opt/sonarqube/logs
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:9000/api/system/status | grep --quiet '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    restart: unless-stopped
+
+  sonar-db:
+    image: postgres:17.10-alpine3.23@sha256:8189a1f6e40904781fc9e2612687877791d21679866db58b1de996b31fc312e4
+    environment:
+      POSTGRES_DB: ${SONAR_POSTGRES_DB:?set SONAR_POSTGRES_DB}
+      POSTGRES_USER: ${SONAR_POSTGRES_USER:?set SONAR_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${SONAR_POSTGRES_PASSWORD:?set SONAR_POSTGRES_PASSWORD}
+    volumes:
+      - sonar_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  sonar_data:
+  sonar_extensions:
+  sonar_logs:
+  sonar_db:

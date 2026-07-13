@@ -1,0 +1,58 @@
+---
+name: Pull Request Policy
+
+on:
+  workflow_call:
+    inputs:
+      base_ref:
+        description: Pull request base branch
+        required: true
+        type: string
+      head_ref:
+        description: Pull request head branch
+        required: true
+        type: string
+      is_draft:
+        description: Whether the pull request is a draft
+        required: true
+        type: boolean
+      pr_title:
+        description: Pull request title
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: Pull request base branch
+        required: true
+        type: string
+      head_ref:
+        description: Pull request head branch
+        required: true
+        type: string
+      is_draft:
+        description: Whether the pull request is a draft
+        required: true
+        type: boolean
+      pr_title:
+        description: Pull request title
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    name: PR Policy
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Validate GitFlow policy
+        env:
+          BASE_REF: ${{ inputs.base_ref }}
+          HEAD_REF: ${{ inputs.head_ref }}
+          PR_DRAFT: ${{ inputs.is_draft }}
+          PR_TITLE: ${{ inputs.pr_title }}
+        run: bash Infrastructure/ci/validate-gitflow.sh

@@ -42,6 +42,24 @@
 - [CR-035](phase-02-ios-platform/CR-035.md)
 - [CR-036](phase-02-ios-platform/CR-036.md)
 
+## Phase 2B — Strict GitFlow CI/CD Foundation
+
+- [CR-114](phase-02b-cicd-foundation/CR-114.md)
+- [CR-115](phase-02b-cicd-foundation/CR-115.md)
+- [CR-116](phase-02b-cicd-foundation/CR-116.md)
+- [CR-117](phase-02b-cicd-foundation/CR-117.md)
+- [CR-118](phase-02b-cicd-foundation/CR-118.md)
+- [CR-119](phase-02b-cicd-foundation/CR-119.md)
+- [CR-120](phase-02b-cicd-foundation/CR-120.md)
+- [CR-121](phase-02b-cicd-foundation/CR-121.md)
+- [CR-122](phase-02b-cicd-foundation/CR-122.md)
+- [CR-123](phase-02b-cicd-foundation/CR-123.md)
+- [CR-124](phase-02b-cicd-foundation/CR-124.md)
+- [CR-125](phase-02b-cicd-foundation/CR-125.md)
+- [CR-126](phase-02b-cicd-foundation/CR-126.md)
+- [CR-127](phase-02b-cicd-foundation/CR-127.md)
+- [CR-128](phase-02b-cicd-foundation/CR-128.md)
+
 ## Phase 3 — Authentication End to End
 
 - [CR-037](phase-03-authentication/CR-037.md)
@@ -133,13 +151,14 @@
 - [CR-111](phase-07-quality-ci/CR-111.md)
 - [CR-112](phase-07-quality-ci/CR-112.md)
 - [CR-113](phase-07-quality-ci/CR-113.md)
+
 ## Summary
 
-- **Total number of tasks:** 113
-- **Estimated total implementation time:** 1505 minutes (25.1 engineer-hours), excluding review and CI wait time.
+- **Total number of tasks:** 128
+- **Estimated total implementation time:** 1730 minutes (28.8 engineer-hours), excluding review and CI wait time.
 - **Critical path:** Foundation API/TLS (CR-001 → CR-006 → CR-007 → CR-008 → CR-009 → CR-010 → CR-011 → CR-013 → CR-016 → CR-017), iOS composition (CR-019 → CR-021 → CR-022 → CR-024 → CR-025 → CR-034 → CR-035), then feature chains Auth → Catalog → Detail → Checkout → CI (CR-037 → CR-054 → CR-055 → CR-068 → CR-069 → CR-078 → CR-079 → CR-095 → CR-096 → CR-111 → CR-112 → CR-113).
-- **Parallelizable tasks:** CR-001, CR-002. Particularly useful parallel groups are backend/iOS work within phases 3–6 and UI-test/security-workflow tasks in phase 7.
+- **Parallelizable tasks:** CR-001, CR-002, CR-004, CR-006, CR-012, CR-013, CR-019, CR-020, CR-022, CR-023, CR-024, CR-026, CR-029, CR-030, CR-031, CR-039, CR-041, CR-043, CR-048, CR-049, CR-050, CR-056, CR-057, CR-083, CR-085, CR-116, CR-117, CR-120, CR-121, CR-122, CR-123, CR-126.
 
 ## Duration Verification
 
-All 113 tasks use 5m, 10m, or 15m estimates. Automated validation confirms no duration exceeds 15 minutes, IDs are sequential, and every dependency points to an earlier CR. Two-file responsibilities were split except where the approved spec treats the same file as an existing composition or Make entry point.
+All 128 tasks use 5m, 10m, or 15m estimates. Automated validation confirms no duration exceeds 15 minutes, IDs are sequential, and every dependency points to an earlier CR. Two-file responsibilities were split except where the approved spec treats the same file as an existing composition or Make entry point.
