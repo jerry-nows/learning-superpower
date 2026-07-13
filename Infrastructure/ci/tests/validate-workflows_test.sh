@@ -55,6 +55,13 @@ if [[ ! -f "$sonarqube_compose" ]]; then
   exit 1
 fi
 
+validate_sonarqube_compose_security() {
+  local candidate="$1"
+  grep -Fq -- '127.0.0.1:${SONAR_PORT:-9000}:9000' "$candidate" \
+    && ! grep -Fq -- '0.0.0.0:${SONAR_PORT:-9000}:9000' "$candidate" \
+    && ! grep -Fq -- '- "${SONAR_PORT:-9000}:9000"' "$candidate"
+}
+
 for required_text in \
   'sonarqube:26.7.0.124771-community@sha256:160bd2f6a3485bd09b655ef22dd63c02bd1fa7ba82aa5d9973fd010b8bcca0b3' \
   'postgres:17.10-alpine3.23@sha256:8189a1f6e40904781fc9e2612687877791d21679866db58b1de996b31fc312e4' \
@@ -67,6 +74,18 @@ for required_text in \
   fi
 done
 
+if ! validate_sonarqube_compose_security "$sonarqube_compose"; then
+  echo "sonarqube.compose.yaml must publish SonarQube only on 127.0.0.1 by default" >&2
+  exit 1
+fi
+
+cp "$sonarqube_compose" "$temp_dir/all-interfaces-sonarqube.compose.yaml"
+sed -i.bak 's/127\.0\.0\.1:/0.0.0.0:/' "$temp_dir/all-interfaces-sonarqube.compose.yaml"
+if validate_sonarqube_compose_security "$temp_dir/all-interfaces-sonarqube.compose.yaml"; then
+  echo "Compose security contract accepted an all-interface SonarQube mapping" >&2
+  exit 1
+fi
+
 validate_runbook_targeting() {
   local candidate="$1"
   grep -Fq 'export GH_REPO="jerry-nows/learning-superpower"' "$candidate" \
@@ -74,8 +93,30 @@ validate_runbook_targeting() {
     && grep -Fq 'docker compose --env-file .env -f Infrastructure/sonarqube.compose.yaml up -d --wait sonarqube' "$candidate"
 }
 
+validate_runbook_sonarqube_security() {
+  local candidate="$1"
+  grep -Fq '127.0.0.1:${SONAR_PORT:-9000}:9000' "$candidate" \
+    && grep -Fq 'immediately replace the bootstrap administrator password' "$candidate" \
+    && grep -Fq 'least-privilege analysis token' "$candidate" \
+    && grep -Fq 'firewall' "$candidate" \
+    && grep -Fq 'TLS' "$candidate" \
+    && grep -Fq 'reverse proxy' "$candidate"
+}
+
 if ! validate_runbook_targeting "$runbook"; then
   echo "gitflow-cicd.md must use GH_REPO and the checked-in SonarQube Compose path" >&2
+  exit 1
+fi
+
+if ! validate_runbook_sonarqube_security "$runbook"; then
+  echo "gitflow-cicd.md must document SonarQube bootstrap and remote-exposure security" >&2
+  exit 1
+fi
+
+cp "$runbook" "$temp_dir/missing-sonarqube-bootstrap-security.md"
+sed -i.bak 's/immediately replace the bootstrap administrator password/retain the bootstrap administrator password/' "$temp_dir/missing-sonarqube-bootstrap-security.md"
+if validate_runbook_sonarqube_security "$temp_dir/missing-sonarqube-bootstrap-security.md"; then
+  echo "documentation contract accepted missing bootstrap password replacement guidance" >&2
   exit 1
 fi
 

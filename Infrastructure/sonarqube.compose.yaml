@@ -11,7 +11,7 @@ services:
       SONAR_JDBC_USERNAME: ${SONAR_POSTGRES_USER:?set SONAR_POSTGRES_USER}
       SONAR_JDBC_PASSWORD: ${SONAR_POSTGRES_PASSWORD:?set SONAR_POSTGRES_PASSWORD}
     ports:
-      - "${SONAR_PORT:-9000}:9000"
+      - "127.0.0.1:${SONAR_PORT:-9000}:9000"
     volumes:
       - sonar_data:/opt/sonarqube/data
       - sonar_extensions:/opt/sonarqube/extensions

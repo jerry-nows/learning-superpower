@@ -64,7 +64,7 @@ gh variable list | grep -F SONAR_HOST_URL
 gh secret list | grep -F SONAR_TOKEN
 ```
 
-Replace the deliberately invalid URL with the runner-reachable SonarQube URL. Test from the runner without printing the token:
+Replace the deliberately invalid URL with the runner-reachable SonarQube URL. Before any CI use, sign in locally with SonarQube's documented bootstrap account, immediately replace the bootstrap administrator password with a unique value held outside the repository, and create a dedicated least-privilege analysis token scoped only to the CI project. Store that token as `SONAR_TOKEN`; never put either credential in commands, documentation, `.env`, logs, or committed files. Test from the runner without printing the token:
 
 ```bash
 read -rs SONAR_TOKEN
@@ -160,7 +160,7 @@ open -a Docker
 until docker info >/dev/null 2>&1; do sleep 2; done
 ```
 
-The repository owns a dedicated persistent SonarQube/PostgreSQL stack at `Infrastructure/sonarqube.compose.yaml`. From the repository root, first create a local environment file and replace every `change-me` value. Never commit `.env`:
+The repository owns a dedicated persistent SonarQube/PostgreSQL stack at `Infrastructure/sonarqube.compose.yaml`. Its published port is intentionally bound as `127.0.0.1:${SONAR_PORT:-9000}:9000`, so only a runner on the Docker host can connect directly. From the repository root, first create a local environment file and replace every `change-me` value. Never commit `.env`:
 
 ```bash
 cp .env.example .env
@@ -172,7 +172,11 @@ docker compose --env-file .env -f Infrastructure/sonarqube.compose.yaml logs --t
 curl --fail --silent --show-error "$SONAR_HOST_URL/api/system/status"
 ```
 
-Set `SONAR_HOST_URL=http://localhost:${SONAR_PORT:-9000}` when the runner is on the Docker host; use the Docker-host address when it is not. Wait for status `UP`, then run `Infrastructure/ci/preflight-sonarqube.sh`. Stop without deleting persistent data with:
+Set `SONAR_HOST_URL=http://127.0.0.1:${SONAR_PORT:-9000}` when the runner is on the Docker host. Wait for status `UP`, then run `Infrastructure/ci/preflight-sonarqube.sh`.
+
+If a remote runner must access SonarQube, do not change the Compose mapping to `0.0.0.0` or another all-interface binding. Keep the direct service loopback-only and place an authenticated reverse proxy on the Docker host in front of it. Require TLS with a trusted certificate, restrict the host firewall to the remote runner's stable source address and the proxy's TLS port, and ensure the proxy is the only permitted route to SonarQube. Set `SONAR_HOST_URL` to that hardened HTTPS endpoint only after verifying the firewall, TLS, reverse proxy authentication, and reachability from the runner.
+
+After the first local start and before configuring GitHub Actions, immediately replace the bootstrap administrator password and create a dedicated least-privilege analysis token for this project. Do not reuse the administrator password or an administrator token for CI. Stop without deleting persistent data with:
 
 ```bash
 docker compose --env-file .env -f Infrastructure/sonarqube.compose.yaml stop
