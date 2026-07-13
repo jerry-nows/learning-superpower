@@ -748,9 +748,9 @@ Read both rulesets back with `gh api`, compare every required check context and 
 
 ### Task 16B: Correct the SonarQube plan for strict GitFlow
 
-**Root cause:** SonarQube Cloud Free analyzes pull requests only when they target `main`. That cannot enforce this repository's required `feature/* -> develop` path, while releases and hotfixes still target `main`.
+**Root cause:** SonarQube Cloud Free analyzes pull requests only when they target `main`. That cannot enforce this repository's required `feature/* -> develop` and `bugfix/* -> develop` paths, while releases and hotfixes still target `main`.
 
-**Correction:** Use SonarQube for OSS for `jerry-nows_learning-superpower`. The OSS plan supports the repository's public multi-branch GitFlow analysis, but only analyzes public repositories. Automatic Analysis remains off so the pinned CI scanner and synchronous repository `Quality Gate` remain authoritative.
+**Correction:** Use SonarQube for OSS for `jerry-nows_learning-superpower`. The OSS plan supports the repository's public multi-branch GitFlow analysis across feature/bugfix PRs to `develop` and release/hotfix PRs to `main`, but only analyzes public repositories. Automatic Analysis remains off so the pinned CI scanner and synchronous repository `Quality Gate` remain authoritative.
 
 **Files:**
 - Modify: `Infrastructure/ci/tests/validate-workflows_test.sh`, `sonar-project.properties`

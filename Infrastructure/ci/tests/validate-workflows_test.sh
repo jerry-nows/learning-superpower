@@ -140,6 +140,7 @@ for required_text in \
   'only analyzes public repositories' \
   'Free plan analyzes pull requests only when they target `main`' \
   '`feature/* -> develop`' \
+  '`bugfix/* -> develop`' \
   'sonar.organization=jerry-nows' \
   'sonar.projectKey=jerry-nows_learning-superpower' \
   'gh secret set SONAR_TOKEN' \

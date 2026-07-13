@@ -23,7 +23,7 @@ Never register a personal self-hosted runner for this public repository. Pull-re
 
 ## Configure SonarQube for OSS
 
-Create or import one SonarQube for OSS project for the repository with `sonar.organization=jerry-nows` and `sonar.projectKey=jerry-nows_learning-superpower`. The Free plan analyzes pull requests only when they target `main`; it is incompatible with the mandatory `feature/* -> develop` path and would leave integration PRs without analysis. SonarQube for OSS supports this public multi-branch GitFlow, including `feature/* -> develop` and release/hotfix PRs to `main`, but only analyzes public repositories. If this repository becomes private, the OSS plan is no longer valid and CI must move to a plan that supports private repositories before merging further changes.
+Create or import one SonarQube for OSS project for the repository with `sonar.organization=jerry-nows` and `sonar.projectKey=jerry-nows_learning-superpower`. The Free plan analyzes pull requests only when they target `main`; it is incompatible with the mandatory `feature/* -> develop` and `bugfix/* -> develop` paths and would leave integration PRs without analysis. SonarQube for OSS supports this public multi-branch GitFlow, including feature/bugfix PRs to `develop` and release/hotfix PRs to `main`, but only analyzes public repositories. If this repository becomes private, the OSS plan is no longer valid and CI must move to a plan that supports private repositories before merging further changes.
 
 Although SonarSource recommends a project per independently built monorepo component, this repository deliberately uses one combined Swift-and-Go project: the repository ships as one quality unit, the existing scanner produces both coverage reports in one workspace, and one synchronous result gives the aggregate workflow a stable fail-closed dependency. Revisit the model if the components gain independent release lifecycles. SonarQube Cloud's native monorepo PR-blocking behavior must not be assumed to replace the repository's own `Quality Gate`. Keep Automatic Analysis off so the pinned CI scanner remains the sole analysis path.
 
@@ -51,7 +51,7 @@ git switch -c develop main
 git push -u origin develop
 ```
 
-Allowed pull requests are `feature/* -> develop`, `release/* -> main`, and `hotfix/* -> main`. Draft PRs and titles that do not use Conventional Commits are rejected. Direct pushes to protected branches are not an operating procedure.
+Allowed pull requests are `feature/* -> develop`, `bugfix/* -> develop`, `release/* -> main`, and `hotfix/* -> main`. Draft PRs and titles that do not use Conventional Commits are rejected. Direct pushes to protected branches are not an operating procedure.
 
 ## CodeQL advanced setup for this public repository
 

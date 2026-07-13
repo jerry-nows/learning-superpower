@@ -68,7 +68,7 @@ Every third-party action is pinned to a full commit SHA. Workflow permissions de
 
 ### SonarQube
 
-`quality.yml` runs on GitHub-hosted `macos-26` and analyzes the repository with SonarQube for OSS. The OSS plan is required because the Free plan analyzes pull requests only when they target `main`, which cannot enforce `feature/* -> develop`. SonarQube for OSS only analyzes public repositories, matching this repository's visibility. Automatic Analysis stays off so the CI-based scanner is authoritative. The workflow:
+`quality.yml` runs on GitHub-hosted `macos-26` and analyzes the repository with SonarQube for OSS. The OSS plan is required because the Free plan analyzes pull requests only when they target `main`, which cannot enforce `feature/* -> develop` or `bugfix/* -> develop`. SonarQube for OSS only analyzes public repositories, matching this repository's visibility. Automatic Analysis stays off so the CI-based scanner is authoritative. The workflow:
 
 - requires only `SONAR_TOKEN` as an Actions secret;
 - identifies the combined repository project with `sonar.organization=jerry-nows` and `sonar.projectKey=jerry-nows_learning-superpower`;
