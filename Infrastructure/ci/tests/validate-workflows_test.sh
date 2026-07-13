@@ -325,6 +325,7 @@ for required_text in \
   'severity: HIGH,CRITICAL' \
   'exit-code: 1' \
   'CycloneDX/gh-gomod-generate-sbom@' \
+  'GITHUB_TOKEN: ${{ github.token }}' \
   'sbom.cdx.json' \
   'retention-days: 7'; do
   if ! grep -Fq -- "$required_text" "$security_workflow"; then
