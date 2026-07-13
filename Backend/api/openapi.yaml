@@ -26,9 +26,10 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AuthResponse' }
         '400': { $ref: '#/components/responses/InvalidRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+        '401': { $ref: '#/components/responses/AuthenticationFailed' }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
         '408': { $ref: '#/components/responses/Timeout' }
-        '503': { $ref: '#/components/responses/Unavailable' }
+        '500': { $ref: '#/components/responses/Internal' }
   /v1/auth/refresh:
     post:
       operationId: refresh
@@ -45,9 +46,10 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AuthResponse' }
         '400': { $ref: '#/components/responses/InvalidRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+        '401': { $ref: '#/components/responses/RefreshRejected' }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
         '408': { $ref: '#/components/responses/Timeout' }
-        '503': { $ref: '#/components/responses/Unavailable' }
+        '500': { $ref: '#/components/responses/Internal' }
   /v1/auth/logout:
     post:
       operationId: logout
@@ -56,8 +58,9 @@ paths:
       responses:
         '204': { description: User refresh sessions revoked }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
         '408': { $ref: '#/components/responses/Timeout' }
-        '503': { $ref: '#/components/responses/Unavailable' }
+        '500': { $ref: '#/components/responses/Internal' }
 components:
   securitySchemes:
     bearerAuth:
@@ -104,20 +107,39 @@ components:
       type: object
       required: [code, message, retryable, trace_id]
       properties:
-        code: { type: string, pattern: '^AUTH_[A-Z0-9_]+$' }
+        code:
+          type: string
+          enum: [AUTH_INVALID_REQUEST, AUTH_METHOD_NOT_ALLOWED, AUTH_AUTHENTICATION_FAILED, AUTH_REFRESH_REJECTED, AUTH_UNAUTHORIZED, AUTH_AUTHENTICATION_CANCELLED, AUTH_REFRESH_CANCELLED, AUTH_LOGOUT_CANCELLED, AUTH_TOKEN_ISSUE_CANCELLED, AUTH_REPOSITORY_FAILED, AUTH_TOKEN_ISSUE_FAILED, AUTH_LOGOUT_FAILED, AUTH_INTERNAL]
         message: { type: string }
         retryable: { type: boolean }
         trace_id: { type: string }
+        field_violations:
+          type: array
+          items:
+            type: object
+            required: [name, message]
+            properties:
+              name: { type: string }
+              message: { type: string }
   responses:
     InvalidRequest:
       description: Malformed JSON, missing field, or unsupported content type.
       content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { code: AUTH_INVALID_REQUEST, message: request failed, retryable: false, trace_id: '<trace-id>' } } }
+    AuthenticationFailed:
+      description: Invalid login credentials (AUTH_AUTHENTICATION_FAILED).
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { code: AUTH_AUTHENTICATION_FAILED, message: request failed, retryable: false, trace_id: '<trace-id>' } } }
+    RefreshRejected:
+      description: Expired, revoked or reused refresh token (AUTH_REFRESH_REJECTED).
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { code: AUTH_REFRESH_REJECTED, message: request failed, retryable: false, trace_id: '<trace-id>' } } }
     Unauthorized:
-      description: Invalid credentials, expired/reused refresh token, or missing/invalid bearer token.
+      description: Missing or invalid bearer token (AUTH_UNAUTHORIZED is emitted at the logout boundary).
       content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { code: AUTH_UNAUTHORIZED, message: request failed, retryable: false, trace_id: '<trace-id>' } } }
+    MethodNotAllowed:
+      description: Request method is not POST (AUTH_METHOD_NOT_ALLOWED).
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { code: AUTH_METHOD_NOT_ALLOWED, message: request failed, retryable: false, trace_id: '<trace-id>' } } }
     Timeout:
-      description: Authentication operation timed out or was cancelled.
-      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { code: AUTH_TIMEOUT, message: request failed, retryable: false, trace_id: '<trace-id>' } } }
-    Unavailable:
-      description: Authentication persistence or token issuer is unavailable.
-      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { code: AUTH_UNAVAILABLE, message: request failed, retryable: true, trace_id: '<trace-id>' } } }
+      description: Authentication operation timed out or was cancelled (AUTH_AUTHENTICATION_CANCELLED, AUTH_REFRESH_CANCELLED, AUTH_LOGOUT_CANCELLED or AUTH_TOKEN_ISSUE_CANCELLED).
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { code: AUTH_AUTHENTICATION_CANCELLED, message: request failed, retryable: false, trace_id: '<trace-id>' } } }
+    Internal:
+      description: Authentication repository, token issuance or logout failure (AUTH_REPOSITORY_FAILED, AUTH_TOKEN_ISSUE_FAILED, AUTH_LOGOUT_FAILED or AUTH_INTERNAL).
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { code: AUTH_INTERNAL, message: request failed, retryable: false, trace_id: '<trace-id>' } } }
