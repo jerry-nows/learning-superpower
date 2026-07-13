@@ -61,7 +61,8 @@ if awk '
   fail 'property escapes and continuations are not allowed'
 fi
 
-assert_property 'sonar.projectKey' 'learning-superpower'
+assert_property 'sonar.organization' 'jerry-nows'
+assert_property 'sonar.projectKey' 'jerry-nows_learning-superpower'
 assert_property 'sonar.projectName' 'Learning Superpower Commerce'
 assert_property 'sonar.sourceEncoding' 'UTF-8'
 assert_property 'sonar.sources' 'Backend,Apps,Packages'

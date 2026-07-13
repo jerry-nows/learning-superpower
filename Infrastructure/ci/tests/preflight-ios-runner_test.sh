@@ -55,12 +55,6 @@ case "${1:-}" in
   *) exit 2 ;;
 esac
 EOF
-  cat >"$bin_dir/docker" <<'EOF'
-#!/usr/bin/env bash
-printf 'docker %s\n' "$*" >>"$FIXTURE_LOG"
-[[ "${FIXTURE_FAILURE:-}" != docker-info ]] || { echo 'fixture docker failure' >&2; exit 42; }
-[[ "${1:-}" == info ]]
-EOF
   cat >"$bin_dir/xcrun" <<EOF
 #!/usr/bin/env bash
 printf 'xcrun %s\n' "\$*" >>"\$FIXTURE_LOG"
@@ -79,7 +73,6 @@ run_preflight() {
     FIXTURE_SWIFTLINT_VERSION="$FIXTURE_SWIFTLINT_VERSION" \
     XCODEBUILD_BIN="$bin_dir/xcodebuild" \
     MISE_BIN="$bin_dir/mise" \
-    DOCKER_BIN="$bin_dir/docker" \
     XCRUN_BIN="$bin_dir/xcrun" \
     "$PREFLIGHT" 2>&1
 }
@@ -104,7 +97,6 @@ assert_command_ran "xcodebuild -version"
 assert_command_ran "mise install"
 assert_command_ran "mise exec -- tuist version"
 assert_command_ran "mise exec -- swiftlint version"
-assert_command_ran "docker info"
 assert_command_ran "xcrun simctl list devices available"
 
 write_fixture_commands x86_64
@@ -126,7 +118,6 @@ write_fixture_commands
 FIXTURE_FAILURE=mise-install assert_fails_with "mise install failed; run 'mise install'"
 FIXTURE_FAILURE=tuist-version assert_fails_with "Unable to read Tuist version; run 'mise install tuist'"
 FIXTURE_FAILURE=swiftlint-version assert_fails_with "Unable to read SwiftLint version; run 'mise install swiftlint'"
-FIXTURE_FAILURE=docker-info assert_fails_with "Docker is unavailable; start Docker Desktop"
 FIXTURE_FAILURE=xcrun-list assert_fails_with "Unable to list available Simulators; verify Xcode command-line tools"
 
 echo "PASS: iOS runner preflight fixtures"

@@ -14,11 +14,17 @@ concurrency:
 jobs:
   ios:
     name: iOS
-    runs-on: [self-hosted, macOS, ARM64, "${{ 'commerce-ios' }}"]
+    runs-on: macos-26
     timeout-minutes: 45
     steps:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90
+        with:
+          xcode-version: 26.6
+      - name: Install pinned tools
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d
       - name: Preflight iOS runner
         run: Infrastructure/ci/preflight-ios-runner.sh
       - name: Boot iPhone 17 Simulator

@@ -43,7 +43,7 @@ The pipeline is split into independent workflows with stable check names and an 
 
 ### iOS
 
-`ios.yml` runs on a self-hosted Apple Silicon Mac labelled `self-hosted`, `macOS`, `ARM64`, and `commerce-ios`. It:
+`ios.yml` runs on the GitHub-hosted Apple Silicon `macos-26` image and explicitly selects Xcode 26.6. It:
 
 - verifies the pinned Xcode, Tuist, and SwiftLint toolchain;
 - generates the Tuist workspace;
@@ -52,7 +52,7 @@ The pipeline is split into independent workflows with stable check names and an 
 - pins the simulator selection and reports available simulators when preflight fails;
 - uploads `.xcresult` bundles and concise logs on failure.
 
-Only one iOS job may use the local runner at a time.
+Superseded iOS runs are cancelled through pull-request concurrency.
 
 ### Security
 
@@ -68,15 +68,15 @@ Every third-party action is pinned to a full commit SHA. Workflow permissions de
 
 ### SonarQube
 
-`quality.yml` runs on the self-hosted Mac so it can reach the Docker-based local SonarQube service. It:
+`quality.yml` runs on GitHub-hosted `macos-26` and analyzes the repository with SonarQube Cloud Free. It:
 
-- requires `SONAR_HOST_URL` as a repository variable and `SONAR_TOKEN` as an Actions secret;
-- fails immediately with actionable configuration guidance if either value is absent;
-- verifies or starts the local SonarQube service;
+- requires only `SONAR_TOKEN` as an Actions secret;
+- identifies the combined repository project with `sonar.organization=jerry-nows` and `sonar.projectKey=jerry-nows_learning-superpower`;
+- fails immediately with actionable guidance when a trusted run lacks the token;
 - imports Go coverage and converted Swift coverage;
 - waits for the SonarQube Quality Gate result and fails when the gate fails.
 
-SonarQube is never silently skipped.
+The combined project is an intentional exception to SonarSource's project-per-component monorepo recommendation because Swift and Go ship behind one repository gate and their reports are generated in one workspace. The stable repository aggregate remains authoritative because native monorepo PR blocking has limitations. Fork pull requests receive no secret, fail explicitly, and remain blocked; no `pull_request_target` workflow executes untrusted code.
 
 ### Aggregate Gate
 
@@ -120,15 +120,7 @@ The `develop` branch is created from the current `main` before the ruleset is en
 
 No credential, certificate, registration token, or runner secret is committed.
 
-The self-hosted runner:
-
-- runs as a dedicated non-administrator user;
-- registers with ephemeral credentials supplied outside Git;
-- exposes SonarQube only through the local network boundary needed by the runner;
-- cleans the Actions workspace after each job;
-- does not expose the Docker socket to jobs that do not require it;
-- retains logs and artifacts for a bounded period;
-- never prints secret-bearing environment values.
+Public pull-request code runs only on fresh GitHub-hosted virtual machines. A personal self-hosted runner is never registered. The Sonar token is passed only to the trusted eligibility/scan job, is never printed, and is unavailable to fork pull requests.
 
 ## Local Validation and Operations
 
@@ -136,17 +128,17 @@ The repository provides:
 
 - `make ci-validate` for actionlint, yamllint, shell syntax, and workflow contracts;
 - `make ci-backend` for backend quality checks;
-- `make ci-ios` for the self-hosted iOS sequence;
+- `make ci-ios` for the pinned local iOS sequence;
 - `make ci-security` for local security checks where supported;
-- preflight scripts for runner labels, tool versions, Simulator availability, Docker, SonarQube reachability, and required environment values;
-- a runbook for runner setup, secrets, branch rules, failure recovery, and Sourcery verification.
+- preflight scripts for tool versions, Simulator availability, optional local Docker/SonarQube reachability, and required environment values;
+- a runbook for hosted CI, secrets, branch rules, failure recovery, and Sourcery verification.
 
 Contract tests validate branch-policy decisions and required configuration without creating deliberately broken commits.
 
 ## Failure Behaviour
 
-- A missing SonarQube variable or secret fails immediately and blocks the pull request.
-- An offline self-hosted runner leaves required jobs queued and blocks the pull request.
+- A missing SonarQube token fails immediately and blocks a trusted pull request.
+- A fork pull request cannot access the token and fails explicitly until evaluated from a trusted same-repository branch.
 - A missing Simulator fails preflight and prints available destinations.
 - A missing Sourcery review triggers an installation/access check followed by `@sourcery-ai review`.
 - A failed security scanner blocks the pull request and preserves a sanitized report.
@@ -160,7 +152,7 @@ Contract tests validate branch-policy decisions and required configuration witho
 4. Add minimal legacy `.sourcery.yaml`, the auditable Dashboard review-rules record, and the CI/CD operations runbook.
 5. Validate locally, commit, and push the workflow changes.
 6. Create `develop` from `main`.
-7. Configure repository variables and secrets, then register the self-hosted runner.
+7. Configure the SonarQube Cloud project and repository secret; never register a personal runner.
 8. Observe successful workflow check names and configure branch rulesets.
 9. Trigger Sourcery on PR #3, observe its check name, and add it to both rulesets.
 
@@ -169,7 +161,7 @@ Contract tests validate branch-policy decisions and required configuration witho
 - Pull requests that violate GitFlow are rejected.
 - Pull requests to `develop` and `main` cannot merge without every strict quality gate.
 - Backend and security jobs run on GitHub-hosted Ubuntu.
-- iOS and SonarQube jobs run on the labelled self-hosted Mac.
+- iOS and SonarQube jobs run on GitHub-hosted `macos-26` with Xcode 26.6 selected.
 - iOS lint, tests, UI smoke test, and unsigned build complete successfully.
 - SonarQube fails closed when unavailable or misconfigured.
 - Sourcery reviews PR #3 and its observed check is required by branch protection.

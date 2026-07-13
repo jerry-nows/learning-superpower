@@ -727,6 +727,25 @@ Read both rulesets back with `gh api`, compare every required check context and 
 
 ---
 
+### Task 16A: Migrate public-PR CI to hosted services
+
+**Approved variance:** Replace the personal self-hosted Mac and local SonarQube dependency for pull-request CI with GitHub-hosted `macos-26` runners and SonarQube Cloud Free. Never register or expose a personal runner to public pull-request code. Keep the loopback-only Docker SonarQube stack as optional local development tooling, not a CI prerequisite.
+
+**Files:**
+- Modify: `.github/workflows/ios.yml`, `.github/workflows/quality.yml`, `.github/workflows/ci.yml`, `sonar-project.properties`
+- Modify: `Infrastructure/ci/tests/validate-workflows_test.sh`, `Infrastructure/ci/tests/sonar_config_test.sh`
+- Modify: `docs/superpowers/specs/2026-07-12-gitflow-cicd-design.md`, affected Phase 02B CR records, and `docs/development/gitflow-cicd.md`
+
+**Implementation:**
+1. Change workflow contracts first and capture RED evidence for hosted macOS, Xcode 26.6 selection, SonarQube Cloud project identity, token-only scanner configuration, and safe fork behavior.
+2. Run iOS and SonarQube coverage/analysis on GitHub-hosted `macos-26`; configure `sonar.organization=jerry-nows` and `sonar.projectKey=jerry-nows_learning-superpower`; pass only `SONAR_TOKEN`; wait synchronously for the Quality Gate.
+3. For same-repository PRs and protected-branch pushes, fail closed when the token or Cloud project is unavailable. For fork pull requests, do not use `pull_request_target` or expose secrets: skip the scanner explicitly, surface a non-successful SonarQube result, and keep aggregate `Quality Gate` blocked.
+4. Retain local Docker SonarQube and its preflight only as optional developer tooling, update architecture/CR/runbook guidance, and verify workflow contracts, Sonar mappings, actionlint, yamllint, and whitespace.
+
+**Definition of Done:** Public pull-request code executes only on fresh GitHub-hosted runners; privileged SonarQube Cloud analysis receives only `SONAR_TOKEN` on trusted events; fork PRs cannot access secrets or satisfy the aggregate gate; no CI job depends on `SONAR_HOST_URL`, a personal runner, or local Docker.
+
+---
+
 ## Final Verification Matrix
 
 | Requirement | Evidence |

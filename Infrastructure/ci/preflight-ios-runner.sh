@@ -7,7 +7,6 @@ EXPECTED_SWIFTLINT_VERSION=0.65.0
 IOS_SIMULATOR_NAME=${IOS_SIMULATOR_NAME:-iPhone 17}
 XCODEBUILD_BIN=${XCODEBUILD_BIN:-xcodebuild}
 MISE_BIN=${MISE_BIN:-mise}
-DOCKER_BIN=${DOCKER_BIN:-docker}
 XCRUN_BIN=${XCRUN_BIN:-xcrun}
 
 architecture=$(uname -m)
@@ -48,11 +47,6 @@ fi
 swiftlint_version=$(printf '%s\n' "$swiftlint_output" | sed -n '1{s/\r$//;p;}')
 if [[ "$swiftlint_version" != "$EXPECTED_SWIFTLINT_VERSION" ]]; then
   echo "Runner must use SwiftLint $EXPECTED_SWIFTLINT_VERSION; found ${swiftlint_version:-unknown}. Run 'mise install swiftlint' to install the pinned version." >&2
-  exit 1
-fi
-
-if ! "$DOCKER_BIN" info; then
-  echo "Docker is unavailable; start Docker Desktop and wait for the Docker engine to become ready." >&2
   exit 1
 fi
 

@@ -6,7 +6,7 @@ on:
     secrets:
       SONAR_TOKEN:
         description: SonarQube authentication token
-        required: true
+        required: false
 
 permissions:
   contents: read
@@ -14,18 +14,33 @@ permissions:
 jobs:
   sonarqube:
     name: SonarQube
-    runs-on: [self-hosted, macOS, ARM64, "${{ 'commerce-ios' }}"]
+    runs-on: macos-26
     timeout-minutes: 45
     steps:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0
-      - name: Preflight SonarQube
+      - name: Verify SonarQube Cloud eligibility
         env:
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+          SOURCE_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: Infrastructure/ci/preflight-sonarqube.sh
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == pull_request && "$SOURCE_REPOSITORY" != "$GITHUB_REPOSITORY" ]]; then
+            message="::error::Fork pull requests cannot use repository SonarQube credentials;"
+            printf '%s\n' "$message a trusted maintainer run is required."
+            exit 1
+          fi
+          if [[ -z "$SONAR_TOKEN" ]]; then
+            printf '%s\n' "::error::SONAR_TOKEN is required for trusted SonarQube Cloud analysis."
+            exit 1
+          fi
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90
+        with:
+          xcode-version: 26.6
+      - name: Install pinned tools
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d
       - name: Generate Go coverage
         working-directory: Backend
         run: mise exec -- go test -race -coverprofile=coverage.out ./...
@@ -47,9 +62,8 @@ jobs:
           Build/coverage/CommerceApp.xcresult
           Build/reports/swift-coverage.xml
       - name: Scan and wait for Quality Gate
-        uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995
+        uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e
         env:
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: -Dsonar.qualitygate.wait=true

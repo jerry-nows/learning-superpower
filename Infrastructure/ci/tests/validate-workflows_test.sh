@@ -135,14 +135,10 @@ if validate_runbook_targeting "$temp_dir/unsafe-repo-selector.md"; then
 fi
 
 for required_text in \
-  'runs-on: [self-hosted, macOS, ARM64, commerce-ios]' \
-  './config.sh --url "$REPOSITORY_URL" --token "$RUNNER_REGISTRATION_TOKEN" --labels commerce-ios' \
-  './svc.sh install' \
-  './svc.sh start' \
-  './svc.sh status' \
-  './svc.sh stop' \
-  './svc.sh uninstall' \
-  'gh variable set SONAR_HOST_URL --body "$SONAR_HOST_URL"' \
+  'runs-on: macos-26' \
+  'SonarQube Cloud Free' \
+  'sonar.organization=jerry-nows' \
+  'sonar.projectKey=jerry-nows_learning-superpower' \
   'gh secret set SONAR_TOKEN' \
   'git switch -c develop main' \
   'git push -u origin develop' \
@@ -161,8 +157,8 @@ for required_text in \
   'CodeQL advanced setup' \
   'Disable default setup' \
   'fail closed' \
-  'short-lived' \
-  'Settings > Actions > Runners' \
+  'Never register a personal self-hosted runner' \
+  'fork pull requests' \
   'Rotate SONAR_TOKEN'; do
   if ! grep -Fq -- "$required_text" "$runbook"; then
     echo "gitflow-cicd.md is missing required text: $required_text" >&2
@@ -197,6 +193,11 @@ fi
 
 if [[ ! -f "$ci_workflow" ]]; then
   echo "required workflow is missing: .github/workflows/ci.yml" >&2
+  exit 1
+fi
+
+if grep -R -Fq 'pull_request_target:' "$workflow_dir"; then
+  echo "workflows must not execute public pull-request code through pull_request_target" >&2
   exit 1
 fi
 
@@ -248,25 +249,34 @@ for required_text in \
   'secrets:' \
   'SONAR_TOKEN:' \
   'description: SonarQube authentication token' \
-  'required: true' \
+  'required: false' \
   'name: SonarQube' \
-  'runs-on: [self-hosted, macOS, ARM64, "${{ '\''commerce-ios'\'' }}"]' \
-  'SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}' \
+  'runs-on: macos-26' \
+  'uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90' \
+  'xcode-version: 26.6' \
+  'uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d' \
+  'SOURCE_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name || github.repository }}' \
+  'Fork pull requests cannot use repository SonarQube credentials' \
+  'SONAR_TOKEN is required for trusted SonarQube Cloud analysis' \
   'SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}' \
-  'Infrastructure/ci/preflight-sonarqube.sh' \
   'go test -race -coverprofile=coverage.out ./...' \
   '-enableCodeCoverage YES' \
   '-resultBundlePath Build/coverage/CommerceApp.xcresult' \
   'rm -rf Build/coverage/CommerceApp.xcresult' \
   'Infrastructure/ci/xccov-to-sonarqube.sh' \
   'Build/reports/swift-coverage.xml' \
-  'uses: SonarSource/sonarqube-scan-action@' \
+  'uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e' \
   '-Dsonar.qualitygate.wait=true'; do
   if ! grep -Fq -- "$required_text" "$quality_workflow"; then
     echo "quality.yml is missing required text: $required_text" >&2
     exit 1
   fi
 done
+
+if grep -Eq 'SONAR_HOST_URL|self-hosted|commerce-ios|preflight-sonarqube|pull_request_target' "$quality_workflow"; then
+  echo "quality.yml must use hosted SonarQube Cloud analysis without self-hosted, URL, local preflight, or pull_request_target configuration" >&2
+  exit 1
+fi
 
 if grep -E 'uses: [^[:space:]]+@' "$quality_workflow" \
   | grep -Evq 'uses: [^[:space:]]+@[0-9a-f]{40}$'; then
@@ -332,7 +342,10 @@ fi
 for required_text in \
   'workflow_call:' \
   'name: iOS' \
-  'runs-on: [self-hosted, macOS, ARM64, "${{ '\''commerce-ios'\'' }}"]' \
+  'runs-on: macos-26' \
+  'uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90' \
+  'xcode-version: 26.6' \
+  'uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d' \
   'timeout-minutes: 45' \
   'group: ios-${{ github.event.pull_request.number || github.ref }}' \
   'Infrastructure/ci/preflight-ios-runner.sh' \
@@ -350,6 +363,11 @@ for required_text in \
     exit 1
   fi
 done
+
+if grep -Eq 'self-hosted|commerce-ios|docker info' "$ios_workflow"; then
+  echo "ios.yml must not execute public pull-request code on a personal runner or require Docker" >&2
+  exit 1
+fi
 
 if grep -E 'uses: [^[:space:]]+@' "$ios_workflow" \
   | grep -Evq 'uses: [^[:space:]]+@[0-9a-f]{40}$'; then
