@@ -23,4 +23,14 @@ func TestRedisRefreshRepositoryContract(t *testing.T) {
 	if !validSession(s, time.Now()) {
 		t.Fatal("valid session rejected")
 	}
+	for _, marker := range []string{"EXISTS',k", "PEXPIRE", "return 2"} {
+		if !strings.Contains(createLua, marker) {
+			t.Fatalf("create script missing collision/ttl marker %q", marker)
+		}
+	}
+	for _, marker := range []string{"EXISTS', nk", "return {5}", "PEXPIRE', famset"} {
+		if !strings.Contains(rotateLua, marker) {
+			t.Fatalf("rotate script missing collision/ttl marker %q", marker)
+		}
+	}
 }

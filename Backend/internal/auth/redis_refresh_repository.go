@@ -50,7 +50,7 @@ func validSession(s RefreshSession, now time.Time) bool {
 	return strings.TrimSpace(s.FamilyID) != "" && strings.TrimSpace(string(s.UserID)) != "" && s.ExpiresAt.After(now) && s.TokenDigest != [sha256.Size]byte{}
 }
 
-const createLua = `local k=KEYS[1]; local fk=KEYS[2]; local uk=KEYS[3]; local now=tonumber(ARGV[1]); local exp=tonumber(ARGV[2]); local digest=ARGV[3]; local family=ARGV[4]; local user=ARGV[5]; local ttl=math.floor((exp-now)+0.999); local retention=ttl+86400000; redis.call('HSET',k,'family_id',family,'user_id',user,'expires_at',exp,'state','active'); redis.call('PEXPIRE',k,retention); redis.call('SADD',fk,digest); redis.call('PEXPIRE',fk,retention); redis.call('SADD',uk,family); redis.call('PEXPIRE',uk,retention); return 1`
+const createLua = `local k=KEYS[1]; local fk=KEYS[2]; local uk=KEYS[3]; local now=tonumber(ARGV[1]); local exp=tonumber(ARGV[2]); local digest=ARGV[3]; local family=ARGV[4]; local user=ARGV[5]; if redis.call('EXISTS',k)==1 then return 2 end; local ttl=math.floor((exp-now)+0.999); local retention=ttl+86400000; redis.call('HSET',k,'family_id',family,'user_id',user,'expires_at',exp,'state','active'); redis.call('PEXPIRE',k,retention); redis.call('SADD',fk,digest); redis.call('PEXPIRE',fk,retention); redis.call('SADD',uk,family); redis.call('PEXPIRE',uk,retention); return 1`
 
 func (r *RedisRefreshRepository) Create(ctx context.Context, s RefreshSession) error {
 	if err := ctx.Err(); err != nil {
@@ -62,9 +62,12 @@ func (r *RedisRefreshRepository) Create(ctx context.Context, s RefreshSession) e
 	}
 	c, cancel := r.opctx(ctx)
 	defer cancel()
-	_, err := r.client.Eval(c, createLua, []string{digestKey(s.TokenDigest), familyKey(s.FamilyID), userKey(s.UserID)}, now.UnixMilli(), s.ExpiresAt.UTC().UnixMilli(), hex.EncodeToString(s.TokenDigest[:]), s.FamilyID, string(s.UserID)).Result()
+	result, err := r.client.Eval(c, createLua, []string{digestKey(s.TokenDigest), familyKey(s.FamilyID), userKey(s.UserID)}, now.UnixMilli(), s.ExpiresAt.UTC().UnixMilli(), hex.EncodeToString(s.TokenDigest[:]), s.FamilyID, string(s.UserID)).Result()
 	if err != nil {
 		return mapRedisError(c, err)
+	}
+	if code, ok := redisInt(result); !ok || code == 2 {
+		return ErrRepository
 	}
 	return nil
 }
@@ -85,13 +88,16 @@ local state = redis.call('HGET', old, 'state') or 'revoked'
 local revoked = redis.call('GET', famstate)
 local function revoke()
   redis.call('SET', famstate, 'revoked', 'PX', 86400000)
-  for _, d in ipairs(redis.call('SMEMBERS', famset)) do redis.call('HSET', 'auth:refresh:session:' .. d, 'state', 'revoked') end
+  for _, d in ipairs(redis.call('SMEMBERS', famset)) do local sk='auth:refresh:session:' .. d; if redis.call('EXISTS',sk)==1 then redis.call('HSET',sk,'state','revoked'); redis.call('PEXPIRE',sk,86400000) end end
+  redis.call('PEXPIRE', famset, 86400000)
+  redis.call('PEXPIRE', 'auth:refresh:user:' .. (user or ''), 86400000)
 end
 if exp <= now then revoke(); return {2} end
 if revoked == 'revoked' then revoke(); return {4} end
 if state ~= 'active' then revoke(); return {3} end
-redis.call('HSET', old, 'state', 'consumed')
 local nk = 'auth:refresh:session:' .. replacement
+if redis.call('EXISTS', nk)==1 then return {5} end
+redis.call('HSET', old, 'state', 'consumed')
 redis.call('HSET', nk, 'family_id', family, 'user_id', user, 'expires_at', replacement_exp, 'state', 'active')
 redis.call('PEXPIRE', nk, math.floor(replacement_ttl + 0.999) + 86400000)
 redis.call('SADD', famset, replacement)
@@ -131,6 +137,8 @@ func (r *RedisRefreshRepository) Rotate(ctx context.Context, presented [sha256.S
 		return RefreshSession{}, ErrRefreshTokenReuse
 	case 4:
 		return RefreshSession{}, ErrRefreshFamilyRevoked
+	case 5:
+		return RefreshSession{}, ErrRepository
 	}
 	if code != 1 || len(vals) < 4 {
 		return RefreshSession{}, ErrRepository
@@ -145,7 +153,7 @@ func (r *RedisRefreshRepository) Rotate(ctx context.Context, presented [sha256.S
 	return RefreshSession{FamilyID: fam, UserID: UserID(usr), TokenDigest: replacement.TokenDigest, ExpiresAt: time.UnixMilli(exp).UTC()}, nil
 }
 
-const revokeUserLua = `local fams=redis.call('SMEMBERS',KEYS[1]); for _,f in ipairs(fams) do local sk='auth:refresh:family:'..f; redis.call('SET','auth:refresh:family-state:'..f,'revoked'); for _,d in ipairs(redis.call('SMEMBERS',sk)) do redis.call('HSET','auth:refresh:session:'..d,'state','revoked') end end; return 1`
+const revokeUserLua = `local fams=redis.call('SMEMBERS',KEYS[1]); redis.call('PEXPIRE',KEYS[1],86400000); for _,f in ipairs(fams) do local sk='auth:refresh:family:'..f; redis.call('SET','auth:refresh:family-state:'..f,'revoked','PX',86400000); redis.call('PEXPIRE',sk,86400000); for _,d in ipairs(redis.call('SMEMBERS',sk)) do local dk='auth:refresh:session:'..d; if redis.call('EXISTS',dk)==1 then redis.call('HSET',dk,'state','revoked'); redis.call('PEXPIRE',dk,86400000) end end end; return 1`
 
 func (r *RedisRefreshRepository) RevokeUser(ctx context.Context, id UserID) error {
 	if strings.TrimSpace(string(id)) == "" {
