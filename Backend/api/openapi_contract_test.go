@@ -2,6 +2,7 @@ package api
 
 import (
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -13,9 +14,7 @@ func TestAuthenticationOpenAPIContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read OpenAPI contract: %v", err)
 	}
-	if strings.Contains(strings.ToLower(string(data)), "password123") || strings.Contains(strings.ToLower(string(data)), "postgres://") {
-		t.Fatal("OpenAPI examples must not contain real credentials or DSNs")
-	}
+	assertNoSecrets(t, string(data))
 	var doc struct {
 		OpenAPI    string                    `yaml:"openapi"`
 		Paths      map[string]map[string]any `yaml:"paths"`
@@ -55,13 +54,19 @@ func TestAuthenticationOpenAPIContract(t *testing.T) {
 		if !ok {
 			t.Fatalf("auth path %s has no responses", path)
 		}
-		for _, status := range []string{"405", "500"} {
-			if _, ok := responses[status]; !ok {
-				t.Fatalf("auth path %s missing %s response", path, status)
-			}
+		want := []string{"400", "401", "405", "408", "500"}
+		if path == "/v1/auth/logout" {
+			want = []string{"204", "401", "405", "408", "500"}
+		} else {
+			want = append([]string{"200"}, want...)
 		}
-		if _, forbidden := responses["503"]; forbidden {
-			t.Fatalf("auth path %s must not advertise unsupported 503", path)
+		if len(responses) != len(want) {
+			t.Fatalf("auth path %s response set mismatch: got %v want %v", path, mapKeys(responses), want)
+		}
+		for _, status := range want {
+			if _, ok := responses[status]; !ok {
+				t.Fatalf("auth path %s missing exact response %s", path, status)
+			}
 		}
 		if path == "/v1/auth/logout" {
 			if _, ok := post["security"]; !ok {
@@ -94,6 +99,37 @@ func TestAuthenticationOpenAPIContract(t *testing.T) {
 			}
 		} else if _, ok := doc.Components.Responses[parts[1]]; !ok {
 			t.Fatalf("unresolved response ref %q", ref)
+		}
+	}
+}
+
+func mapKeys(values map[string]any) []string {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
+func assertNoSecrets(t *testing.T, document string) {
+	t.Helper()
+	for _, pattern := range []*regexp.Regexp{
+		regexp.MustCompile(`-----BEGIN [A-Z0-9 ]+-----`),
+		regexp.MustCompile(`[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}`),
+		regexp.MustCompile(`(?i)(postgres(?:ql)?|mysql|redis|mongodb)(?:\+[^:]*)?://`),
+	} {
+		if pattern.MatchString(document) {
+			t.Fatalf("OpenAPI examples contain a secret-like value matching %s", pattern)
+		}
+	}
+	assignment := regexp.MustCompile(`(?im)^\s*(password|refresh_token|access_token|secret|api[_-]?key|private[_-]?key)\s*:\s*['"]?([^\s,'"{}]+)`)
+	for _, match := range assignment.FindAllStringSubmatch(document, -1) {
+		value := strings.ToLower(match[2])
+		if strings.HasPrefix(value, "<redacted") || strings.HasPrefix(value, "<opaque") || strings.HasPrefix(value, "<trace") || value == "type" {
+			continue
+		}
+		if len(value) >= 8 || value == "password" || value == "token" || value == "secret" {
+			t.Fatalf("OpenAPI secret field %q contains non-redacted example", match[1])
 		}
 	}
 }
