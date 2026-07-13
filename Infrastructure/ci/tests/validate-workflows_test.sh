@@ -208,6 +208,7 @@ fi
 for required_text in \
   'name: Continuous Integration' \
   'pull_request:' \
+  'types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]' \
   'branches: [main, develop]' \
   'push:' \
   'workflow_dispatch:' \
