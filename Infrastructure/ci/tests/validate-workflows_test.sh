@@ -12,8 +12,10 @@ quality_workflow="$workflow_dir/quality.yml"
 ci_workflow="$workflow_dir/ci.yml"
 runbook="$repo_root/docs/development/gitflow-cicd.md"
 readme="$repo_root/README.md"
+sonarqube_compose="$repo_root/Infrastructure/sonarqube.compose.yaml"
 invalid_workflow="$workflow_dir/invalid-workflow-fixture.yml"
 invalid_shell="$repo_root/Infrastructure/ci/invalid-shell-fixture.sh"
+temp_dir="$(mktemp -d)"
 created_github_dir=false
 created_workflow_dir=false
 
@@ -26,6 +28,7 @@ fi
 
 cleanup() {
   rm -f "$invalid_workflow" "$invalid_shell"
+  rm -rf "$temp_dir"
   if [[ "$created_workflow_dir" == true ]]; then
     rmdir "$workflow_dir" 2>/dev/null || true
   fi
@@ -47,6 +50,49 @@ if [[ ! -f "$readme" ]] || ! grep -Fq 'docs/development/gitflow-cicd.md' "$readm
   exit 1
 fi
 
+if [[ ! -f "$sonarqube_compose" ]]; then
+  echo "required Compose file is missing: Infrastructure/sonarqube.compose.yaml" >&2
+  exit 1
+fi
+
+for required_text in \
+  'sonarqube:26.7.0.124771-community@sha256:160bd2f6a3485bd09b655ef22dd63c02bd1fa7ba82aa5d9973fd010b8bcca0b3' \
+  'postgres:17.10-alpine3.23@sha256:8189a1f6e40904781fc9e2612687877791d21679866db58b1de996b31fc312e4' \
+  'condition: service_healthy' \
+  'sonar_data:/opt/sonarqube/data' \
+  'sonar_db:/var/lib/postgresql/data'; do
+  if ! grep -Fq -- "$required_text" "$sonarqube_compose"; then
+    echo "sonarqube.compose.yaml is missing required text: $required_text" >&2
+    exit 1
+  fi
+done
+
+validate_runbook_targeting() {
+  local candidate="$1"
+  grep -Fq 'export GH_REPO="jerry-nows/learning-superpower"' "$candidate" \
+    && ! grep -Fq 'export GITHUB_REPOSITORY=' "$candidate" \
+    && grep -Fq 'docker compose --env-file .env -f Infrastructure/sonarqube.compose.yaml up -d --wait sonarqube' "$candidate"
+}
+
+if ! validate_runbook_targeting "$runbook"; then
+  echo "gitflow-cicd.md must use GH_REPO and the checked-in SonarQube Compose path" >&2
+  exit 1
+fi
+
+cp "$runbook" "$temp_dir/missing-compose-path.md"
+sed -i.bak 's/-f Infrastructure\/sonarqube.compose.yaml/-f unspecified.compose.yaml/g' "$temp_dir/missing-compose-path.md"
+if validate_runbook_targeting "$temp_dir/missing-compose-path.md"; then
+  echo "documentation contract accepted a missing actual Compose path" >&2
+  exit 1
+fi
+
+cp "$runbook" "$temp_dir/unsafe-repo-selector.md"
+sed -i.bak 's/export GH_REPO="jerry-nows\/learning-superpower"/export GITHUB_REPOSITORY="jerry-nows\/learning-superpower"/' "$temp_dir/unsafe-repo-selector.md"
+if validate_runbook_targeting "$temp_dir/unsafe-repo-selector.md"; then
+  echo "documentation contract accepted GITHUB_REPOSITORY-only targeting" >&2
+  exit 1
+fi
+
 for required_text in \
   'runs-on: [self-hosted, macOS, ARM64, commerce-ios]' \
   './config.sh --url "$REPOSITORY_URL" --token "$RUNNER_REGISTRATION_TOKEN" --labels commerce-ios' \
@@ -59,13 +105,16 @@ for required_text in \
   'gh secret set SONAR_TOKEN' \
   'git switch -c develop main' \
   'git push -u origin develop' \
-  'gh api "repos/$GITHUB_REPOSITORY/rulesets"' \
+  'export GH_REPO="jerry-nows/learning-superpower"' \
+  'gh api "repos/$GH_REPO/rulesets"' \
   "gh pr comment 3 --body '@sourcery-ai review'" \
   'gh run rerun "$RUN_ID" --failed' \
   'xcrun simctl shutdown all' \
   'xcrun simctl erase all' \
   'open -a Docker' \
-  'docker compose up -d sonarqube' \
+  'Infrastructure/sonarqube.compose.yaml' \
+  'docker compose --env-file .env -f Infrastructure/sonarqube.compose.yaml up -d --wait sonarqube' \
+  'rm -f Backend/coverage.out' \
   'The Sourcery Dashboard is the source of truth' \
   'docs/development/sourcery-review-rules.md' \
   'CodeQL advanced setup' \
