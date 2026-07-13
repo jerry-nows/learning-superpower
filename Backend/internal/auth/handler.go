@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"mime"
 	"net/http"
 	"strings"
 )
@@ -70,7 +71,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request)  { h.logout(w, 
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		methodError(w, http.MethodPost)
+		methodError(w, r, http.MethodPost)
 		return
 	}
 	var in loginRequest
@@ -87,7 +88,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 }
 func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		methodError(w, http.MethodPost)
+		methodError(w, r, http.MethodPost)
 		return
 	}
 	var in refreshRequest
@@ -104,7 +105,7 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 }
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		methodError(w, http.MethodPost)
+		methodError(w, r, http.MethodPost)
 		return
 	}
 	parts := strings.Fields(r.Header.Get("Authorization"))
@@ -129,7 +130,8 @@ func toTokens(t TokenPair) tokenResponse {
 	return tokenResponse{AccessToken: t.AccessToken, RefreshToken: t.RefreshToken, AccessExpiresAt: t.AccessExpiresAt.UTC().Format("2006-01-02T15:04:05Z07:00"), RefreshExpiresAt: t.RefreshExpiresAt.UTC().Format("2006-01-02T15:04:05Z07:00")}
 }
 func readJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
-	if !strings.HasPrefix(strings.ToLower(r.Header.Get("Content-Type")), "application/json") {
+	mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || mediaType != "application/json" || (params["charset"] != "" && !strings.EqualFold(params["charset"], "utf-8")) {
 		return false
 	}
 	body := http.MaxBytesReader(w, r.Body, maxAuthBody)
@@ -144,9 +146,9 @@ func readJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 	}
 	return true
 }
-func methodError(w http.ResponseWriter, allow string) {
+func methodError(w http.ResponseWriter, r *http.Request, allow string) {
 	w.Header().Set("Allow", allow)
-	w.WriteHeader(http.StatusMethodNotAllowed)
+	writeError(w, r, http.StatusMethodNotAllowed, "AUTH_METHOD_NOT_ALLOWED", false)
 }
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -176,12 +178,16 @@ func (h *Handler) serviceError(w http.ResponseWriter, r *http.Request, err error
 		switch se.Code {
 		case "authentication_failed", "refresh_rejected":
 			status = http.StatusUnauthorized
-		case "authentication_cancelled", "refresh_cancelled", "logout_cancelled":
+		case "authentication_cancelled", "refresh_cancelled", "logout_cancelled", "token_issue_cancelled":
 			status = http.StatusRequestTimeout
 		case "repository_failed", "token_issue_failed":
 			status = http.StatusInternalServerError
 		case "logout_failed":
 			status = http.StatusInternalServerError
+		}
+		if errors.Is(se, context.Canceled) || errors.Is(se, context.DeadlineExceeded) {
+			status = http.StatusRequestTimeout
+			retry = false
 		}
 	}
 	writeError(w, r, status, code, retry)
