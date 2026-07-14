@@ -6,6 +6,9 @@ let project = Project(
     packages: [
         .local(path: "../../Packages/Core"),
         .local(path: "../../Packages/DesignSystem"),
+        .local(path: "../../Packages/LoginFeature"),
+        .local(path: "../../Packages/Security"),
+        .local(path: "../../Packages/Networking"),
         .remote(
             url: "https://github.com/hmlongco/Factory.git",
             requirement: .upToNextMajor(from: "3.3.1")
@@ -36,6 +39,9 @@ let project = Project(
             dependencies: [
                 .package(product: "Core"),
                 .package(product: "DesignSystem"),
+                .package(product: "LoginFeature"),
+                .package(product: "SecurityKit"),
+                .package(product: "Networking"),
                 .package(product: "FactoryKit"),
                 .package(product: "XCoordinator")
             ]
