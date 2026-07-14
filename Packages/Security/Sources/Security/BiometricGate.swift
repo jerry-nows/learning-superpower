@@ -34,7 +34,7 @@ public final class LocalAuthenticationBiometricGate: BiometricGate, @unchecked S
     }
 
     public static func makeContext() -> BiometricContext {
-        #if os(iOS) && !SWIFT_PACKAGE
+        #if canImport(LocalAuthentication)
         return LAContextAdapter()
         #else
         return UnavailableBiometricContext()
@@ -49,7 +49,7 @@ private final class UnavailableBiometricContext: BiometricContext {
     }
 }
 
-#if os(iOS) && !SWIFT_PACKAGE
+#if canImport(LocalAuthentication)
 import LocalAuthentication
 
 private final class LAContextAdapter: BiometricContext, @unchecked Sendable {
