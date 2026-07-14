@@ -27,7 +27,9 @@ assert "-a $${REDIS_PASSWORD}" in redis_healthcheck, redis_healthcheck
 api_env = services["api"]["environment"]
 for key in ("DATABASE_URL", "REDIS_URL", "JWT_SIGNING_KEY", "JWT_ISSUER", "JWT_AUDIENCE", "MIGRATIONS_DIR"):
     assert key in api_env, key
+    assert api_env[key], key
 assert api_env["MIGRATIONS_DIR"] == "/migrations"
+assert len(api_env["JWT_SIGNING_KEY"]) >= 32
 assert "POSTGRES_DSN" not in api_env
 seed = services["seed"]
 assert seed["entrypoint"] == ["/seed"]
@@ -35,5 +37,6 @@ assert seed["restart"] == "no"
 assert seed["depends_on"]["api"]["condition"] == "service_started"
 for key in ("DATABASE_URL", "SEED_USER_EMAIL", "SEED_USER_PASSWORD"):
     assert key in seed["environment"], key
+    assert seed["environment"][key], key
 assert set(services["seed"]["networks"]) == {"backend"}
 '
