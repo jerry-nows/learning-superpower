@@ -44,6 +44,9 @@ func viewModelPublishesLoadingBeforeAuthenticationCompletes() async {
 
     viewModel.submit(email: " user@example.com ", password: "secret")
     #expect(viewModel.state == .loading)
+    for _ in 0..<100 where await probe.calls.isEmpty {
+        await Task.yield()
+    }
     #expect(await probe.calls.count == 1)
     #expect(await probe.calls.first?.0 == "user@example.com")
 
@@ -58,7 +61,7 @@ func viewModelPublishesSuccessWithoutExposingCredentials() async {
     let viewModel = LoginViewModel(authenticator: probe)
 
     viewModel.submit(email: "user@example.com", password: secret)
-    await Task.yield()
+    await yieldUntil { if case .success = viewModel.state { true } else { false } }
 
     #expect(viewModel.state == .success(.authenticated(userID: "user-1")))
     #expect(!String(describing: viewModel.state).contains(secret))
@@ -73,7 +76,7 @@ func viewModelLocalizesAuthenticationFailure() async {
     )
 
     viewModel.submit(email: "user@example.com", password: "secret")
-    await Task.yield()
+    await yieldUntil { if case .failure = viewModel.state { true } else { false } }
 
     #expect(viewModel.state == .failure(.invalidCredentials, message: "Email hoặc mật khẩu không đúng."))
 }
@@ -99,10 +102,17 @@ func duplicateSubmitKeepsLatestResult() async {
 
     viewModel.submit(email: "first@example.com", password: "first-secret")
     viewModel.submit(email: "second@example.com", password: "second-secret")
-    await Task.yield()
-    await Task.yield()
+    await yieldUntil { if case .success = viewModel.state { true } else { false } }
 
     #expect(viewModel.state == .success(.authenticated(userID: "latest-user")))
+}
+
+@MainActor
+private func yieldUntil(_ condition: @escaping () -> Bool) async {
+    for _ in 0..<100 {
+        if condition() { return }
+        await Task.yield()
+    }
 }
 
 private actor SwitchingAuthenticator: LoginAuthenticator {
