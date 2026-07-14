@@ -14,6 +14,7 @@ public final class LoginViewController: UIViewController {
     private let submitButton = UIButton(type: .system)
     private let activityIndicator = UIActivityIndicatorView(style: .medium)
     private let errorLabel = UILabel()
+    private let scrollView = UIScrollView()
     private var stateTask: Task<Void, Never>?
     private var lastState: LoginViewState?
 
@@ -31,6 +32,10 @@ public final class LoginViewController: UIViewController {
         super.viewDidLoad()
         configureView()
         render(viewModel.state)
+    }
+
+    public override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
         observeViewModel()
     }
 
@@ -69,15 +74,24 @@ public final class LoginViewController: UIViewController {
         stack.axis = .vertical
         stack.spacing = 16
         stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
+        scrollView.alwaysBounceVertical = true
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scrollView)
+        scrollView.addSubview(stack)
         view.addSubview(activityIndicator)
         activityIndicator.translatesAutoresizingMaskIntoConstraints = false
 
         let guide = view.safeAreaLayoutGuide
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -24),
-            stack.centerYAnchor.constraint(equalTo: guide.centerYAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: guide.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: guide.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: guide.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: guide.bottomAnchor),
+            stack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor, constant: 24),
+            stack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -24),
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 24),
+            stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -24),
+            stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -48),
             emailField.heightAnchor.constraint(greaterThanOrEqualToConstant: 48),
             passwordField.heightAnchor.constraint(greaterThanOrEqualToConstant: 48),
             submitButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 48),
