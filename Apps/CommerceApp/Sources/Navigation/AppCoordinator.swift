@@ -9,7 +9,7 @@ enum AppRoute: Route {
 }
 
 @MainActor
-final class AppCoordinator: NavigationCoordinator<AppRoute>, ApplicationCoordinating {
+final class AppCoordinator: NavigationCoordinator<AppRoute>, ApplicationCoordinating, @unchecked Sendable {
     private var hasStarted = false
     private var loginCoordinator: LoginCoordinator?
 
@@ -27,8 +27,7 @@ final class AppCoordinator: NavigationCoordinator<AppRoute>, ApplicationCoordina
     }
 
     override func prepareTransition(for route: AppRoute) -> NavigationTransition {
-        // XCoordinator's synchronous route API predates Swift actor annotations.
-        // UIKit navigation invokes this hook on the main thread; assert that invariant at runtime.
+        // XCoordinator's synchronous route API predates actor annotations.
         MainActor.assumeIsolated {
             switch route {
             case .login:
