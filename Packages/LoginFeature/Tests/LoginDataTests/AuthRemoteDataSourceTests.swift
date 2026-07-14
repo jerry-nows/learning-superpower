@@ -20,6 +20,21 @@ private func stubProvider(status: Int, data: Data) -> MoyaProvider<AuthTarget> {
     )
 }
 
+private func delayedProvider(status: Int, data: Data) -> MoyaProvider<AuthTarget> {
+    MoyaProvider<AuthTarget>(
+        endpointClosure: { target in
+            Endpoint(
+                url: target.baseURL.appendingPathComponent(target.path).absoluteString,
+                sampleResponseClosure: .networkResponse(status, data),
+                method: target.method,
+                task: target.task,
+                httpHeaderFields: target.headers
+            )
+        },
+        stubClosure: { _ in .delayed(seconds: 0.2) }
+    )
+}
+
 private let successJSON = Data("""
 {"user":{"id":"user-1","email":"user@example.invalid","status":"active"},"tokens":{"access_token":"access","refresh_token":"refresh","access_expires_at":"2030-01-01T00:00:00Z","refresh_expires_at":"2030-01-02T00:00:00Z"}}
 """.utf8)
@@ -64,6 +79,24 @@ func remoteSourceRejectsMalformedPayload() async {
         #expect(error == .malformedResponse)
     } catch {
         Issue.record("unexpected error type")
+    }
+}
+
+@Test("cancelling a request cancels Moya and resumes exactly once")
+func remoteSourceCancellation() async {
+    let source = AuthRemoteDataSource(baseURL: remoteBaseURL, provider: delayedProvider(status: 200, data: successJSON))
+    let request = Task {
+        try await source.login(email: "user@example.invalid", password: "secret")
+    }
+    try? await Task.sleep(for: .milliseconds(20))
+    request.cancel()
+    do {
+        _ = try await request.value
+        Issue.record("expected cancellation")
+    } catch let error as AuthRemoteDataSourceError {
+        #expect(error == .cancelled)
+    } catch {
+        Issue.record("unexpected cancellation error")
     }
 }
 
