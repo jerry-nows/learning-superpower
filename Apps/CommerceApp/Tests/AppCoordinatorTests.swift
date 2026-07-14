@@ -16,6 +16,7 @@ struct AppCoordinatorTests {
 
         let loginViewController = coordinator.rootViewController.viewControllers.first
         #expect(loginViewController is LoginViewController)
+        loginViewController?.loadViewIfNeeded()
         #expect(loginViewController?.title == "Sign in")
     }
 }
