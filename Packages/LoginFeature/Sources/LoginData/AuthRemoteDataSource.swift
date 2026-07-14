@@ -250,7 +250,7 @@ private final class RequestState<Response>: @unchecked Sendable {
         resume(throwing: AuthRemoteDataSourceError.cancelled)
     }
 
-    func resume(returning value: Response) {
+    func resume(returning value: sending Response) {
         lock.lock()
         guard !completed, let continuation else {
             lock.unlock()

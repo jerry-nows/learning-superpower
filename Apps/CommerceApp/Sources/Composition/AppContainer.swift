@@ -40,13 +40,17 @@ extension Container {
         self { AuthRemoteDataSource(baseURL: self.apiBaseURL()) }.singleton
     }
 
-    var authRepository: Factory<any AuthRepository> {
+    var authRepository: Factory<DefaultAuthRepository> {
         self {
             DefaultAuthRepository(
                 remote: self.authRemoteDataSource(),
                 tokenStore: self.tokenStore()
             )
         }.singleton
+    }
+
+    var loginAuthenticator: Factory<any LoginAuthenticator> {
+        self { self.authRepository() }.singleton
     }
 
     var loginCoordinator: Factory<LoginViewModelFactory> {
@@ -66,7 +70,7 @@ extension Container {
     func makeLoginCoordinator(input: LoginFlowInput = .init()) -> LoginCoordinator {
         return LoginCoordinator(
             input: input,
-            authenticator: authRepository(),
+            authenticator: loginAuthenticator(),
             viewModelFactory: loginCoordinator()
         )
     }
