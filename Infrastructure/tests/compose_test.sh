@@ -31,6 +31,7 @@ assert api_env["MIGRATIONS_DIR"] == "/migrations"
 assert "POSTGRES_DSN" not in api_env
 seed = services["seed"]
 assert seed["entrypoint"] == ["/seed"]
+assert seed["restart"] == "no"
 assert seed["depends_on"]["api"]["condition"] == "service_started"
 for key in ("DATABASE_URL", "SEED_USER_EMAIL", "SEED_USER_PASSWORD"):
     assert key in seed["environment"], key
