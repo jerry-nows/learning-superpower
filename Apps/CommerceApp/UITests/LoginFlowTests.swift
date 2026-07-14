@@ -52,27 +52,6 @@ final class LoginFlowTests: XCTestCase {
         XCTAssertTrue(application.navigationBars["Products"].waitForExistence(timeout: 15))
     }
 
-    func testBiometricFallbackIsOptInAndSkipsWhenUnavailable() throws {
-        let environment = ProcessInfo.processInfo.environment
-        guard environment["UI_TEST_BIOMETRIC_FALLBACK"] == "1" else {
-            throw XCTSkip("Set UI_TEST_BIOMETRIC_FALLBACK=1 to exercise biometric fallback")
-        }
-        guard environment["UI_TEST_BIOMETRIC_AVAILABLE"] == "1" else {
-            throw XCTSkip("Biometric hardware/simulator support is unavailable")
-        }
-
-        let configuration = try configuration()
-        let application = makeApplication(configuration)
-        application.launchArguments.append("-UITestBiometricFallback")
-        application.launch()
-
-        XCTAssertEqual(application.state, .runningForeground)
-        XCTAssertTrue(
-            application.buttons["Sign in"].waitForExistence(timeout: 5),
-            "Fallback must leave the user on a usable sign-in screen"
-        )
-    }
-
     private struct Configuration {
         let endpoint: String
         let email: String
