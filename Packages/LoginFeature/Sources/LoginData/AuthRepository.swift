@@ -46,10 +46,12 @@ public protocol AuthRepository: Sendable {
 public final class DefaultAuthRepository: AuthRepository, @unchecked Sendable {
     private let remote: any AuthRemoteSource
     private let tokenStore: any TokenStore
+    private let refreshActor: AuthRefreshActor<AuthenticatedUser>
 
     public init(remote: any AuthRemoteSource, tokenStore: any TokenStore) {
         self.remote = remote
         self.tokenStore = tokenStore
+        self.refreshActor = AuthRefreshActor()
     }
 
     public func login(email: String, password: String) async throws -> AuthenticatedUser {
@@ -70,6 +72,13 @@ public final class DefaultAuthRepository: AuthRepository, @unchecked Sendable {
     }
 
     public func refresh() async throws -> AuthenticatedUser {
+        try await refreshActor.refresh { [weak self] in
+            guard let self else { throw AuthRepositoryError.failure(.serviceUnavailable) }
+            return try await self.performRefresh()
+        }
+    }
+
+    private func performRefresh() async throws -> AuthenticatedUser {
         let tokens: TokenPair
         do {
             guard let stored = try tokenStore.load() else {

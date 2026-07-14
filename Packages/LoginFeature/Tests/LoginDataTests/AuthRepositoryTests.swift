@@ -35,6 +35,7 @@ private final class FakeRemote: AuthRemoteSource, @unchecked Sendable {
 
     func refresh(refreshToken: String) async throws -> RemoteAuthResponse {
         refreshCalls.append(refreshToken)
+        try? await Swift.Task.sleep(for: .milliseconds(20))
         return try refreshResult.get()
     }
 
@@ -42,6 +43,26 @@ private final class FakeRemote: AuthRemoteSource, @unchecked Sendable {
         logoutCalls.append(accessToken)
         try logoutResult.get()
     }
+}
+
+@Test("concurrent refresh requests share one remote rotation")
+func concurrentRefreshIsSingleFlight() async throws {
+    let remote = FakeRemote()
+    let store = FakeTokenStore(value: TokenPair(accessToken: "old-access", refreshToken: "old-refresh", accessTokenExpiresAt: testDate))
+    let repository = DefaultAuthRepository(remote: remote, tokenStore: store)
+
+    await withTaskGroup(of: Result<AuthenticatedUser, Error>.self) { group in
+        for _ in 0..<8 {
+            group.addTask {
+                do { return .success(try await repository.refresh()) }
+                catch { return .failure(error) }
+            }
+        }
+        for await result in group {
+            if case .failure(let error) = result { Issue.record("unexpected refresh error: \(error)") }
+        }
+    }
+    #expect(remote.refreshCalls.count == 1)
 }
 
 private final class FakeTokenStore: TokenStore, @unchecked Sendable {

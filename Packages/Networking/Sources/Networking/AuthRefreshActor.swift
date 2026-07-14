@@ -8,12 +8,16 @@ import Foundation
 public actor AuthRefreshActor<Output: Sendable> {
     public typealias RefreshOperation = @Sendable () async throws -> Output
 
-    private let refreshOperation: RefreshOperation
+    private let refreshOperation: RefreshOperation?
     private var inFlight: Swift.Task<Output, Error>?
     private var generation: UInt = 0
 
     public init(refreshOperation: @escaping RefreshOperation) {
         self.refreshOperation = refreshOperation
+    }
+
+    public init() {
+        self.refreshOperation = nil
     }
 
     /// Returns the result of a shared refresh operation.
@@ -23,13 +27,18 @@ public actor AuthRefreshActor<Output: Sendable> {
     /// for every request that received the same 401. Callers that need prompt
     /// cancellation should check their task state after this method returns.
     public func refresh() async throws -> Output {
+        guard let refreshOperation else { throw AuthRefreshActorError.operationNotConfigured }
+        return try await refresh(using: refreshOperation)
+    }
+
+    public func refresh(using operation: @escaping RefreshOperation) async throws -> Output {
         if let inFlight {
             return try await inFlight.value
         }
 
         generation &+= 1
         let currentGeneration = generation
-        let task = Swift.Task { try await refreshOperation() }
+        let task = Swift.Task { try await operation() }
         inFlight = task
 
         defer {
@@ -40,4 +49,8 @@ public actor AuthRefreshActor<Output: Sendable> {
 
         return try await task.value
     }
+}
+
+public enum AuthRefreshActorError: Error, Equatable, Sendable {
+    case operationNotConfigured
 }
