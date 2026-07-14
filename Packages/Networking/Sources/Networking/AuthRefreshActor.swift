@@ -17,9 +17,10 @@ public actor AuthRefreshActor<Output: Sendable> {
 
     /// Returns the result of a shared refresh operation.
     ///
-    /// A cancelled waiter stops awaiting the result, but does not cancel the
-    /// operation shared by other callers. This prevents one request timing out
-    /// from cancelling refresh for every request that received the same 401.
+    /// Cancellation of a waiter never cancels the operation shared by other
+    /// callers. This prevents one request timing out from cancelling refresh
+    /// for every request that received the same 401. Callers that need prompt
+    /// cancellation should check their task state after this method returns.
     public func refresh() async throws -> Output {
         if let inFlight {
             return try await inFlight.value
