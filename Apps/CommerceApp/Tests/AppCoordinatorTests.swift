@@ -1,5 +1,6 @@
 import Testing
 import UIKit
+import LoginPresentation
 
 @testable import CommerceApp
 
@@ -13,6 +14,8 @@ struct AppCoordinatorTests {
         coordinator.start()
         try await Task.sleep(for: .milliseconds(100))
 
-        #expect(coordinator.rootViewController.viewControllers.first?.title == "Sign in")
+        let loginViewController = coordinator.rootViewController.viewControllers.first
+        #expect(loginViewController is LoginViewController)
+        #expect(loginViewController?.title == "Sign in")
     }
 }
