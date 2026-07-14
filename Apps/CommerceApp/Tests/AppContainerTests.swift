@@ -21,7 +21,9 @@ struct AppContainerTests {
 
     @Test("login flow factory can be replaced at the composition boundary")
     func loginFlowFactoryCanBeReplaced() {
+        var invoked = false
         let replacement: LoginViewModelFactory = { input, authenticator in
+            invoked = true
             LoginViewModel(input: input, authenticator: authenticator)
         }
         AppContainer.shared.loginCoordinator.register { replacement }
@@ -31,6 +33,7 @@ struct AppContainerTests {
         let viewController = coordinator.makeViewController()
 
         #expect(viewController is LoginViewController)
+        #expect(invoked)
     }
 }
 
