@@ -29,7 +29,7 @@ migrate:
 	@$(COMPOSE) up --build --wait api
 
 seed:
-	@$(COMPOSE) run --rm --no-deps seed
+	@$(COMPOSE) run --rm --no-deps -T seed
 
 auth-e2e: migrate seed
 	@ENV_FILE="$(COMPOSE_ENV_FILE)" Infrastructure/scripts/auth-e2e.sh

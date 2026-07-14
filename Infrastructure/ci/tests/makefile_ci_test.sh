@@ -54,7 +54,7 @@ assert_target_contains ci-security 'fs --scanners vuln --severity HIGH,CRITICAL 
 
 assert_target_contains migrate 'docker compose --env-file'
 assert_target_contains migrate 'up --build --wait api'
-assert_target_contains seed 'run --rm --no-deps seed'
+assert_target_contains seed 'run --rm --no-deps -T seed'
 assert_target_contains auth-e2e 'Infrastructure/scripts/auth-e2e.sh'
 assert_target_contains auth-e2e 'ENV_FILE='
 
