@@ -186,7 +186,15 @@ public final class DefaultAuthRepository: AuthRepository, @unchecked Sendable {
 
 extension DefaultAuthRepository: LoginAuthenticator {
     public func authenticate(email: String, password: String) async throws -> String {
-        let user = try await login(email: email, password: password)
-        return user.id
+        do {
+            let user = try await login(email: email, password: password)
+            return user.id
+        } catch let error as AuthRepositoryError {
+            throw LoginAuthenticationError.failure(error.loginFailure)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw LoginAuthenticationError.failure(.unknown)
+        }
     }
 }

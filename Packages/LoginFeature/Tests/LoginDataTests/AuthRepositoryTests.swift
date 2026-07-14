@@ -221,6 +221,22 @@ func mapsRemoteErrors() async {
     }
 }
 
+@Test("presentation adapter preserves repository failure categories")
+func authenticateMapsRepositoryFailure() async {
+    let remote = FakeRemote()
+    remote.loginResult = .failure(AuthRemoteDataSourceError.invalidCredentials)
+    let repository = DefaultAuthRepository(remote: remote, tokenStore: FakeTokenStore())
+
+    do {
+        _ = try await repository.authenticate(email: "user@example.invalid", password: "secret")
+        Issue.record("expected authentication failure")
+    } catch let error as LoginAuthenticationError {
+        #expect(error == .failure(.invalidCredentials))
+    } catch {
+        Issue.record("unexpected error: \(error)")
+    }
+}
+
 @Test("missing stored refresh token is terminal and clears defensively")
 func missingRefreshTokenIsRejected() async {
     let remote = FakeRemote()
