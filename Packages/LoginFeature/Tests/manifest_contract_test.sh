@@ -33,7 +33,7 @@ ruby -rjson -e '
   abort "invalid LoginData dependencies" unless targets["LoginData"]["dependencies"] == [
     { "byName" => ["LoginDomain", nil] },
     { "product" => ["Networking", "Networking", nil, nil] },
-    { "product" => ["Security", "Security", nil, nil] }
+    { "product" => ["SecurityKit", "Security", nil, nil] }
   ]
   abort "invalid LoginPresentation dependencies" unless targets["LoginPresentation"]["dependencies"] == [
     { "byName" => ["LoginDomain", nil] },

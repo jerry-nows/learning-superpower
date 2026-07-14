@@ -6,11 +6,11 @@ let package = Package(
     name: "Security",
     platforms: [.iOS(.v17)],
     products: [
-        .library(name: "Security", targets: ["Security"])
+        .library(name: "SecurityKit", targets: ["SecurityKit"])
     ],
     targets: [
-        .target(name: "Security"),
-        .testTarget(name: "SecurityTests", dependencies: ["Security"])
+        .target(name: "SecurityKit", path: "Sources/Security"),
+        .testTarget(name: "SecurityTests", dependencies: ["SecurityKit"])
     ],
     swiftLanguageModes: [.v6]
 )

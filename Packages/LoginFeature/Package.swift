@@ -24,7 +24,7 @@ let package = Package(
             dependencies: [
                 "LoginDomain",
                 .product(name: "Networking", package: "Networking"),
-                .product(name: "Security", package: "Security")
+                .product(name: "SecurityKit", package: "Security")
             ]
         ),
         .target(

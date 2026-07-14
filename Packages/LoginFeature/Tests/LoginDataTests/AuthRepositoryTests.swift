@@ -1,7 +1,7 @@
 import Foundation
 import LoginData
 import Testing
-import Security
+import SecurityKit
 
 private let testDate = Date(timeIntervalSince1970: 1_700_000_000)
 

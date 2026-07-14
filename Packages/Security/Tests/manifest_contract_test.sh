@@ -16,15 +16,15 @@ ruby -rjson -e '
 
   products = manifest.fetch("products")
   abort "expected only the Security library" unless products.length == 1 &&
-    products.first["name"] == "Security" && products.first["targets"] == ["Security"]
+    products.first["name"] == "SecurityKit" && products.first["targets"] == ["SecurityKit"]
 
   targets = manifest.fetch("targets").to_h { |target| [target.fetch("name"), target] }
-  abort "expected Security and SecurityTests targets" unless targets.keys.sort == ["Security", "SecurityTests"]
-  abort "expected Security to be a regular target" unless targets.fetch("Security")["type"] == "regular"
-  abort "expected Security to have no dependencies" unless targets.fetch("Security")["dependencies"] == []
+  abort "expected SecurityKit and SecurityTests targets" unless targets.keys.sort == ["SecurityKit", "SecurityTests"]
+  abort "expected SecurityKit to be a regular target" unless targets.fetch("SecurityKit")["type"] == "regular"
+  abort "expected SecurityKit to have no dependencies" unless targets.fetch("SecurityKit")["dependencies"] == []
   abort "expected SecurityTests to be a test target" unless targets.fetch("SecurityTests")["type"] == "test"
-  abort "expected SecurityTests to depend only on Security" unless
-    targets.fetch("SecurityTests")["dependencies"] == [{ "byName" => ["Security", nil] }]
+  abort "expected SecurityTests to depend only on SecurityKit" unless
+    targets.fetch("SecurityTests")["dependencies"] == [{ "byName" => ["SecurityKit", nil] }]
 ' "$manifest_json"
 
 printf 'PASS: Security package manifest contract\n'

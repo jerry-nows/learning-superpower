@@ -1,7 +1,7 @@
 import Foundation
 import LoginDomain
 import Networking
-import Security
+import SecurityKit
 
 /// The authenticated user value exposed to the presentation layer. Tokens are
 /// deliberately not part of this value; they remain behind `TokenStore`.
