@@ -156,9 +156,10 @@ public final class AuthRemoteDataSource: AuthRemoteSource, @unchecked Sendable {
     private static func makeDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
-            let value = try decoder.singleValueContainer().decode(String.self)
+            let container = try decoder.singleValueContainer()
+            let value = try container.decode(String.self)
             guard let date = ISO8601DateFormatter().date(from: value) else {
-                throw DecodingError.dataCorruptedError(in: decoder.singleValueContainer(), debugDescription: "invalid date")
+                throw DecodingError.dataCorruptedError(in: container, debugDescription: "invalid date")
             }
             return date
         }
