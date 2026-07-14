@@ -67,7 +67,6 @@ public protocol AuthRemoteSource: Sendable {
 /// transport behavior deterministic in tests and to avoid global networking.
 public final class AuthRemoteDataSource: AuthRemoteSource, @unchecked Sendable {
     private let provider: MoyaProvider<AuthTarget>
-    private let decoder: JSONDecoder
     private let baseURL: URL
 
     public init(
@@ -76,7 +75,6 @@ public final class AuthRemoteDataSource: AuthRemoteSource, @unchecked Sendable {
     ) {
         self.baseURL = baseURL
         self.provider = provider
-        self.decoder = Self.makeDecoder()
     }
 
     public func login(email: String, password: String) async throws -> RemoteAuthResponse {
@@ -108,7 +106,7 @@ public final class AuthRemoteDataSource: AuthRemoteSource, @unchecked Sendable {
         return try await withTaskCancellationHandler(operation: {
             try await withCheckedThrowingContinuation { continuation in
                 state.install(continuation)
-                let token = provider.request(target) { [decoder] result in
+                let token = provider.request(target) { result in
                     switch result {
                     case let .success(value):
                         if Response.self == EmptyResponse.self {
@@ -116,7 +114,7 @@ public final class AuthRemoteDataSource: AuthRemoteSource, @unchecked Sendable {
                             return
                         }
                         do {
-                            state.resume(returning: try decoder.decode(Response.self, from: value.data))
+                            state.resume(returning: try Self.makeDecoder().decode(Response.self, from: value.data))
                         } catch {
                             state.resume(throwing: AuthRemoteDataSourceError.malformedResponse)
                         }
