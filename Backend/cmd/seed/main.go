@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/mail"
 	"os"
@@ -21,6 +22,13 @@ const upsertUserSQL = `INSERT INTO users (email, password_hash, status, created_
 VALUES ($1, $2, 'active', NOW(), NOW())
 ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, status = 'active', updated_at = NOW()`
 
+var errSeedRetryable = errors.New("seed database is not ready")
+
+const (
+	seedRetryAttempts = 30
+	seedRetryDelay    = time.Second
+)
+
 type seedDB interface {
 	Ping(context.Context) error
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
@@ -31,14 +39,37 @@ type seedHasher interface{ Hash(string) (string, error) }
 type seedDBFactory func(context.Context, string) (seedDB, error)
 
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
 	defer cancel()
-	if err := run(ctx, os.Getenv, os.Stdout, os.Stderr, openSeedDB, auth.NewPasswordHasher()); err != nil {
+	if err := runWithRetry(ctx, os.Getenv, os.Stdout, os.Stderr, openSeedDB, auth.NewPasswordHasher(), waitSeedRetry); err != nil {
 		// Keep command output generic: never print DSNs, credentials, hashes or addresses.
 		_, _ = io.WriteString(os.Stderr, "seed failed\n")
 		os.Exit(1)
 	}
 	_, _ = io.WriteString(os.Stdout, "seed complete\n")
+}
+
+func runWithRetry(ctx context.Context, getenv func(string) string, out, errOut io.Writer, open seedDBFactory, hasher seedHasher, wait func(context.Context, time.Duration) error) error {
+	for attempt := 1; ; attempt++ {
+		err := run(ctx, getenv, out, errOut, open, hasher)
+		if err == nil || !errors.Is(err, errSeedRetryable) || attempt >= seedRetryAttempts {
+			return err
+		}
+		if err := wait(ctx, seedRetryDelay); err != nil {
+			return err
+		}
+	}
+}
+
+func waitSeedRetry(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func openSeedDB(ctx context.Context, dsn string) (seedDB, error) {
@@ -63,7 +94,7 @@ func run(ctx context.Context, getenv func(string) string, _ io.Writer, errOut io
 	db, err := open(ctx, dsn)
 	if err != nil || db == nil {
 		writeGeneric(errOut)
-		return errors.New("database connection failed")
+		return fmt.Errorf("%w: database connection failed", errSeedRetryable)
 	}
 	defer db.Close()
 
@@ -72,7 +103,7 @@ func run(ctx context.Context, getenv func(string) string, _ io.Writer, errOut io
 	cancel()
 	if err != nil {
 		writeGeneric(errOut)
-		return errors.New("database health check failed")
+		return fmt.Errorf("%w: database health check failed", errSeedRetryable)
 	}
 	hash, err := hasher.Hash(password)
 	if err != nil || hash == "" {
@@ -81,7 +112,7 @@ func run(ctx context.Context, getenv func(string) string, _ io.Writer, errOut io
 	}
 	if _, err = db.Exec(ctx, upsertUserSQL, normalized, hash); err != nil {
 		writeGeneric(errOut)
-		return errors.New("user seed failed")
+		return fmt.Errorf("%w: user seed failed", errSeedRetryable)
 	}
 	return nil
 }

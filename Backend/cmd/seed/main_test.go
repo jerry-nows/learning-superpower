@@ -182,6 +182,42 @@ func TestSeedOpenAndExecFailuresAreGeneric(t *testing.T) {
 	}
 }
 
+func TestSeedRetriesUntilMigrationsAreReady(t *testing.T) {
+	env := map[string]string{"DATABASE_URL": "dsn", "SEED_USER_EMAIL": "user@example.com", "SEED_USER_PASSWORD": "SuperSecret123!"}
+	readyDB := &fakeSeedDB{}
+	openCalls := 0
+	waitCalls := 0
+	open := func(context.Context, string) (seedDB, error) {
+		openCalls++
+		if openCalls < 3 {
+			return nil, errors.New("postgres is still starting")
+		}
+		return readyDB, nil
+	}
+	wait := func(context.Context, time.Duration) error {
+		waitCalls++
+		return nil
+	}
+	err := runWithRetry(context.Background(), func(k string) string { return env[k] }, nil, new(strings.Builder), open, &fakeSeedHasher{hash: "hash"}, wait)
+	if err != nil {
+		t.Fatalf("runWithRetry: %v", err)
+	}
+	if openCalls != 3 || waitCalls != 2 {
+		t.Fatalf("retry calls = open:%d wait:%d", openCalls, waitCalls)
+	}
+}
+
+func TestSeedDoesNotRetryInvalidConfiguration(t *testing.T) {
+	waitCalls := 0
+	err := runWithRetry(context.Background(), func(string) string { return "" }, nil, new(strings.Builder), nil, nil, func(context.Context, time.Duration) error {
+		waitCalls++
+		return nil
+	})
+	if err == nil || waitCalls != 0 {
+		t.Fatalf("invalid configuration retry = %v, waits = %d", err, waitCalls)
+	}
+}
+
 func TestSeedPostgresIsIdempotent(t *testing.T) {
 	testcontainers.SkipIfProviderIsNotHealthy(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
