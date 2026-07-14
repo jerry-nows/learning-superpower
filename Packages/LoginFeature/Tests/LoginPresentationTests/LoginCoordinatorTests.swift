@@ -20,7 +20,9 @@ final class LoginCoordinatorTests: XCTestCase {
         descendants(of: viewController.view, matching: UIButton.self)
             .first { $0.title(for: .normal) == "Sign in" }?
             .sendActions(for: .touchUpInside)
-        await Task.yield()
+        for _ in 0..<100 where received == nil {
+            await Task.yield()
+        }
 
         XCTAssertEqual(received, .authenticated(userID: "user-1"))
     }
