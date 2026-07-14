@@ -42,7 +42,9 @@ final class AppCoordinator: NavigationCoordinator<AppRoute>, ApplicationCoordina
                 }
                 return .push(coordinator.makeViewController())
             case .authenticated:
-                return .push(AuthenticatedPlaceholderViewController())
+                // Replace the login stack so authenticated users cannot back
+                // navigate into a completed credential flow.
+                return .set([AuthenticatedPlaceholderViewController()])
             }
         }
     }
