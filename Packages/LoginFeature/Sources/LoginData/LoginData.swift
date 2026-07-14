@@ -1,6 +1,6 @@
 import LoginDomain
 import Networking
-import Security
+import SecurityKit
 
 public enum LoginData {
     public static let moduleName = "LoginData"
