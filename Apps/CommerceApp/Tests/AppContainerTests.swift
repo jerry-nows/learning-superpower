@@ -24,7 +24,7 @@ struct AppContainerTests {
         var invoked = false
         let replacement: LoginViewModelFactory = { input, authenticator in
             invoked = true
-            LoginViewModel(input: input, authenticator: authenticator)
+            return LoginViewModel(input: input, authenticator: authenticator)
         }
         AppContainer.shared.loginCoordinator.register { replacement }
         defer { AppContainer.shared.loginCoordinator.reset() }
