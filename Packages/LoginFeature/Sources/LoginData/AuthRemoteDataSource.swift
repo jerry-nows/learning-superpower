@@ -131,8 +131,8 @@ public final class AuthRemoteDataSource: AuthRemoteSource, @unchecked Sendable {
         })
     }
 
-    private static func map(_ error: MoyaError) -> AuthRemoteDataSourceError {
-        if case let .statusCode(response) = error {
+    private static func map(_ moyaError: MoyaError) -> AuthRemoteDataSourceError {
+        if case let .statusCode(response) = moyaError {
             guard let envelope = try? JSONDecoder().decode(ErrorEnvelope.self, from: response.data) else {
                 return response.statusCode == 408 ? .cancelled : .server(code: "HTTP_\(response.statusCode)")
             }
@@ -147,7 +147,8 @@ public final class AuthRemoteDataSource: AuthRemoteSource, @unchecked Sendable {
             default: return .server(code: envelope.code)
             }
         }
-        if case .underlying(let error, _) = error, (error as NSError).code == NSURLErrorCancelled {
+        if case let .underlying(underlying, _) = moyaError,
+           (underlying as NSError).code == NSURLErrorCancelled {
             return .cancelled
         }
         return .transport
