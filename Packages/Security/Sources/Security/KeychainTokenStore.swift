@@ -1,5 +1,5 @@
 import Foundation
-#if os(iOS) && !SWIFT_PACKAGE
+#if canImport(Security)
 import Security
 #endif
 
@@ -45,7 +45,7 @@ public final class KeychainTokenStore: TokenStore, @unchecked Sendable {
         guard !tokens.accessToken.isEmpty, !tokens.refreshToken.isEmpty else {
             throw KeychainTokenStoreError.encodingFailed
         }
-        #if os(iOS) && !SWIFT_PACKAGE
+        #if canImport(Security)
         let data: Data
         do { data = try JSONEncoder().encode(tokens) }
         catch { throw KeychainTokenStoreError.encodingFailed }
@@ -65,7 +65,7 @@ public final class KeychainTokenStore: TokenStore, @unchecked Sendable {
     }
 
     public func load() throws -> TokenPair? {
-        #if os(iOS) && !SWIFT_PACKAGE
+        #if canImport(Security)
         var query = baseQuery()
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -83,7 +83,7 @@ public final class KeychainTokenStore: TokenStore, @unchecked Sendable {
     }
 
     public func clear() throws {
-        #if os(iOS) && !SWIFT_PACKAGE
+        #if canImport(Security)
         let status = SecItemDelete(baseQuery() as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw KeychainTokenStoreError.keychainFailure
@@ -93,7 +93,7 @@ public final class KeychainTokenStore: TokenStore, @unchecked Sendable {
         #endif
     }
 
-    #if os(iOS) && !SWIFT_PACKAGE
+    #if canImport(Security)
     private func baseQuery() -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
