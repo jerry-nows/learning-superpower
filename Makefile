@@ -41,6 +41,7 @@ test-foundation:
 	@bash Infrastructure/tests/check-tools_test.sh
 	@bash Infrastructure/tests/compose_test.sh
 	@bash Infrastructure/tests/certs_test.sh
+	@bash Infrastructure/tests/auth_e2e_test.sh
 	@bash Infrastructure/tests/smoke_test.sh
 
 smoke:
