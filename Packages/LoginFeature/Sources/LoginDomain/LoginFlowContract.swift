@@ -60,3 +60,13 @@ public enum LoginFailure: Sendable, Equatable {
     case biometricUnavailable
     case unknown
 }
+
+/// Domain boundary consumed by the presentation layer. The data module can
+/// adapt its repository without making presentation depend on transport types.
+public protocol LoginAuthenticator: Sendable {
+    func authenticate(email: String, password: String) async throws -> String
+}
+
+public enum LoginAuthenticationError: Error, Sendable, Equatable {
+    case failure(LoginFailure)
+}

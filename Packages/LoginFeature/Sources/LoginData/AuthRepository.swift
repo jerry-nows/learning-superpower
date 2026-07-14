@@ -183,3 +183,10 @@ public final class DefaultAuthRepository: AuthRepository, @unchecked Sendable {
         _ = try? tokenStore.clear()
     }
 }
+
+extension DefaultAuthRepository: LoginAuthenticator {
+    public func authenticate(email: String, password: String) async throws -> String {
+        let user = try await login(email: email, password: password)
+        return user.id
+    }
+}
