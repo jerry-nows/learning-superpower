@@ -66,6 +66,11 @@ func authTargetDiagnosticsAreRedacted() {
 
     #expect(!target.description.contains("private@example.invalid"))
     #expect(!target.description.contains("password-value"))
+    #expect(!String(reflecting: target).contains("private@example.invalid"))
+    #expect(!String(reflecting: target).contains("password-value"))
     #expect(!String(decoding: target.sampleData, as: UTF8.self).contains("password"))
     #expect(!String(decoding: target.sampleData, as: UTF8.self).contains("token"))
+
+    let logout = AuthTarget.logout(baseURL: baseURL, accessToken: "access-secret")
+    #expect(!String(reflecting: logout).contains("access-secret"))
 }

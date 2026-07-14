@@ -1,4 +1,5 @@
 import Foundation
+@_exported import Moya
 
 /// Coordinates refresh requests so concurrent unauthorized requests share one
 /// server call. The refresh operation is intentionally injected so the
@@ -8,7 +9,7 @@ public actor AuthRefreshActor<Output: Sendable> {
     public typealias RefreshOperation = @Sendable () async throws -> Output
 
     private let refreshOperation: RefreshOperation
-    private var inFlight: Task<Output, Error>?
+    private var inFlight: Swift.Task<Output, Error>?
     private var generation: UInt = 0
 
     public init(refreshOperation: @escaping RefreshOperation) {
@@ -28,7 +29,7 @@ public actor AuthRefreshActor<Output: Sendable> {
 
         generation &+= 1
         let currentGeneration = generation
-        let task = Task { try await refreshOperation() }
+        let task = Swift.Task { try await refreshOperation() }
         inFlight = task
 
         defer {

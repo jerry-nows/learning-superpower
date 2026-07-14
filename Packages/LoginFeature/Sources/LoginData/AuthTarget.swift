@@ -1,6 +1,5 @@
 import Foundation
 import LoginDomain
-import Moya
 import Networking
 
 /// Moya targets for the authentication API.
@@ -83,8 +82,14 @@ public enum AuthTarget: TargetType, Sendable {
     public var sampleData: Data { Data("{}".utf8) }
 }
 
-extension AuthTarget: CustomStringConvertible {
+extension AuthTarget: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public var description: String {
         "AuthTarget(POST \(path))"
+    }
+
+    public var debugDescription: String { description }
+
+    public var customMirror: Mirror {
+        Mirror("AuthTarget(POST \(path))", unlabeledChildren: [], displayStyle: .enum)
     }
 }

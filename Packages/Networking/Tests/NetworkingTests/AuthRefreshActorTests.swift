@@ -11,13 +11,13 @@ private actor RefreshProbe {
 
     func invoke() async throws -> String {
         invocationCount += 1
-        try await Task.sleep(for: .milliseconds(30))
+        try await Swift.Task.sleep(for: .milliseconds(30))
         return "refreshed"
     }
 
     func fail() async throws -> String {
         invocationCount += 1
-        try await Task.sleep(for: .milliseconds(30))
+        try await Swift.Task.sleep(for: .milliseconds(30))
         throw RefreshTestError.unavailable
     }
 }
@@ -85,7 +85,7 @@ func refreshFailureIsSharedAndClearsFlight() async throws {
 func cancelledWaiterDoesNotCancelOperation() async throws {
     let probe = RefreshProbe()
     let actor = AuthRefreshActor<String>(refreshOperation: { try await probe.invoke() })
-    let cancelled = Task { try await actor.refresh() }
+    let cancelled = Swift.Task { try await actor.refresh() }
     cancelled.cancel()
 
     let result = try await actor.refresh()
