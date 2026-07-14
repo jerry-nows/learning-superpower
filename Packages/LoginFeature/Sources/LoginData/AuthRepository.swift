@@ -85,7 +85,14 @@ public final class DefaultAuthRepository: AuthRepository, @unchecked Sendable {
 
         do {
             let response = try await remote.refresh(refreshToken: tokens.refreshToken)
-            try persist(response.tokens)
+            do {
+                try persist(response.tokens)
+            } catch {
+                // Rotation succeeded remotely; discard the stale local token if
+                // secure replacement cannot be committed, avoiding reuse of it.
+                clearBestEffort()
+                throw error
+            }
             return map(response.user)
         } catch let error as AuthRepositoryError {
             if isTerminalRefresh(error) { clearBestEffort() }
