@@ -1,11 +1,12 @@
 SHELL := /bin/bash
 ENV_FILE ?= $(if $(wildcard .env),.env,.env.example)
-COMPOSE := docker compose --env-file $(ENV_FILE) -f Infrastructure/compose.yaml
+COMPOSE_ENV_FILE := $(abspath $(ENV_FILE))
+COMPOSE := docker compose --env-file $(COMPOSE_ENV_FILE) -f Infrastructure/compose.yaml
 IOS_WORKSPACE := Commerce.xcworkspace
 IOS_SCHEME := CommerceApp
 IOS_SIMULATOR_DESTINATION ?= platform=iOS Simulator,name=iPhone 17
 
-.PHONY: bootstrap certs infra-up infra-down infra-logs test-go test-foundation smoke \
+.PHONY: bootstrap certs infra-up infra-down infra-logs migrate seed auth-e2e test-go test-foundation smoke \
 	ios-generate ios-test-packages ios-build-unsigned ci-validate ci-backend ci-ios \
 	ci-security ci-all
 
@@ -24,6 +25,15 @@ infra-down:
 infra-logs:
 	@$(COMPOSE) logs -f --tail=200
 
+migrate:
+	@$(COMPOSE) up --build --wait api
+
+seed:
+	@$(COMPOSE) run --rm --no-deps seed
+
+auth-e2e: migrate seed
+	@ENV_FILE="$(COMPOSE_ENV_FILE)" Infrastructure/scripts/auth-e2e.sh
+
 test-go:
 	@cd Backend && mise exec -- go test -race ./...
 
@@ -34,7 +44,7 @@ test-foundation:
 	@bash Infrastructure/tests/smoke_test.sh
 
 smoke:
-	@ENV_FILE="$(CURDIR)/$(ENV_FILE)" Infrastructure/scripts/smoke.sh
+	@ENV_FILE="$(COMPOSE_ENV_FILE)" Infrastructure/scripts/smoke.sh
 
 ios-generate:
 	@mise exec -- tuist generate --no-open
