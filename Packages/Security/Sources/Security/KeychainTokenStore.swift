@@ -47,8 +47,7 @@ public final class KeychainTokenStore: TokenStore, @unchecked Sendable {
         }
         #if canImport(Security)
         let data: Data
-        do { data = try JSONEncoder().encode(tokens) }
-        catch { throw KeychainTokenStoreError.encodingFailed }
+        do { data = try JSONEncoder().encode(tokens) } catch { throw KeychainTokenStoreError.encodingFailed }
 
         let query = baseQuery()
         let updateStatus = SecItemUpdate(query as CFDictionary, [kSecValueData: data] as CFDictionary)
@@ -75,8 +74,7 @@ public final class KeychainTokenStore: TokenStore, @unchecked Sendable {
         guard status == errSecSuccess, let data = result as? Data else {
             throw KeychainTokenStoreError.keychainFailure
         }
-        do { return try JSONDecoder().decode(TokenPair.self, from: data) }
-        catch { throw KeychainTokenStoreError.decodingFailed }
+        do { return try JSONDecoder().decode(TokenPair.self, from: data) } catch { throw KeychainTokenStoreError.decodingFailed }
         #else
         throw KeychainTokenStoreError.keychainUnavailable
         #endif

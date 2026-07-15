@@ -123,8 +123,7 @@ public final class DefaultAuthRepository: AuthRepository, @unchecked Sendable {
         }
 
         guard let accessToken, !accessToken.isEmpty else {
-            do { try tokenStore.clear() }
-            catch { throw AuthRepositoryError.tokenStore }
+            do { try tokenStore.clear() } catch { throw AuthRepositoryError.tokenStore }
             return
         }
 
@@ -135,8 +134,7 @@ public final class DefaultAuthRepository: AuthRepository, @unchecked Sendable {
             throw map(error)
         }
 
-        do { try tokenStore.clear() }
-        catch { throw AuthRepositoryError.tokenStore }
+        do { try tokenStore.clear() } catch { throw AuthRepositoryError.tokenStore }
     }
 
     private func persist(_ tokens: RemoteTokens) throws {

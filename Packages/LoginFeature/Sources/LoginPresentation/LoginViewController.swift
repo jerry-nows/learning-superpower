@@ -1,6 +1,6 @@
-import UIKit
 import DesignSystem
 import LoginDomain
+import UIKit
 
 /// UIKit entry point for LoginFeature. Credentials stay in the text fields and
 /// are handed directly to the view model; the controller never stores tokens.
@@ -201,7 +201,11 @@ public final class LoginViewController: UIViewController {
     private func setLoading(_ loading: Bool) {
         submitButton.isEnabled = !loading
         submitButton.alpha = loading ? 0.65 : 1
-        loading ? activityIndicator.startAnimating() : activityIndicator.stopAnimating()
+        if loading {
+            activityIndicator.startAnimating()
+        } else {
+            activityIndicator.stopAnimating()
+        }
         submitButton.accessibilityValue = loading ? "Signing in" : nil
     }
 }

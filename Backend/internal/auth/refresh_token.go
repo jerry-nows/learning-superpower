@@ -67,6 +67,10 @@ func ParseRefreshToken(presented string) (RefreshToken, error) {
 // request. It is deliberately not a JSON field.
 func (token RefreshToken) Encoded() string { return token.encoded }
 
+// MarshalJSON intentionally emits no fields. Refresh tokens must only cross
+// the transport boundary through an explicit response DTO.
+func (token RefreshToken) MarshalJSON() ([]byte, error) { return []byte("{}"), nil }
+
 // Format prevents the default formatter from exposing unexported bearer and
 // digest fields in logs. Transport code must call Encoded explicitly.
 func (token RefreshToken) Format(state fmt.State, verb rune) {

@@ -1,8 +1,8 @@
 #if canImport(UIKit)
 import LoginDomain
+@testable import LoginPresentation
 import UIKit
 import XCTest
-@testable import LoginPresentation
 
 @MainActor
 final class LoginViewControllerTests: XCTestCase {

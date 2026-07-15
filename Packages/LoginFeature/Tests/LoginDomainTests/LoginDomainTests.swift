@@ -1,5 +1,5 @@
-import Testing
 @testable import LoginDomain
+import Testing
 
 @Test func domainModuleIsAvailable() {
     #expect(LoginDomain.moduleName == "LoginDomain")

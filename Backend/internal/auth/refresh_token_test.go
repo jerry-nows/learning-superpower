@@ -47,10 +47,9 @@ func TestRefreshTokenDoesNotSerializeSecrets(t *testing.T) {
 	require.NotContains(t, string(encoded), token.Encoded())
 	require.NotContains(t, string(encoded), "digest")
 
-	var zero RefreshToken
 	_, parseErr := ParseRefreshToken("")
 	require.True(t, errors.Is(parseErr, ErrInvalidRefreshToken))
-	require.NotEqual(t, zero, token)
+	require.NotEmpty(t, token.Encoded())
 }
 
 func TestRefreshTokenFormattingDoesNotLeakBearerValue(t *testing.T) {

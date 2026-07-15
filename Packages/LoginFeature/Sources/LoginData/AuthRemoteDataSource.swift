@@ -110,7 +110,11 @@ public final class AuthRemoteDataSource: AuthRemoteSource, @unchecked Sendable {
                     switch result {
                     case let .success(value):
                         if Response.self == EmptyResponse.self {
-                            state.resume(returning: EmptyResponse() as! Response)
+                            guard let empty = EmptyResponse() as? Response else {
+                                state.resume(throwing: AuthRemoteDataSourceError.malformedResponse)
+                                return
+                            }
+                            state.resume(returning: empty)
                             return
                         }
                         do {

@@ -25,8 +25,6 @@ type RedisRefreshRepository struct {
 	timeout time.Duration
 }
 
-const refreshReplayGrace = 24 * time.Hour
-
 func NewRedisRefreshRepository(client redisSessionClient, operationTimeout time.Duration) (*RedisRefreshRepository, error) {
 	if client == nil || (reflect.ValueOf(client).Kind() == reflect.Ptr && reflect.ValueOf(client).IsNil()) {
 		return nil, errors.New("redis refresh repository client must not be nil")

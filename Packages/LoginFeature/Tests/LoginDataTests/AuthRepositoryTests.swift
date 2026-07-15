@@ -1,7 +1,7 @@
 import Foundation
 import LoginData
-import Testing
 import SecurityKit
+import Testing
 
 private let testDate = Date(timeIntervalSince1970: 1_700_000_000)
 
@@ -54,8 +54,7 @@ func concurrentRefreshIsSingleFlight() async throws {
     await withTaskGroup(of: Result<AuthenticatedUser, Error>.self) { group in
         for _ in 0..<8 {
             group.addTask {
-                do { return .success(try await repository.refresh()) }
-                catch { return .failure(error) }
+                do { return .success(try await repository.refresh()) } catch { return .failure(error) }
             }
         }
         for await result in group {

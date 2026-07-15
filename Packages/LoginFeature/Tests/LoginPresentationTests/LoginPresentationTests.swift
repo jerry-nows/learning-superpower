@@ -1,6 +1,6 @@
-import Testing
-@testable import LoginPresentation
 import LoginDomain
+@testable import LoginPresentation
+import Testing
 
 @Test func presentationModuleIsAvailable() {
     #expect(LoginPresentation.moduleName == "LoginPresentation")

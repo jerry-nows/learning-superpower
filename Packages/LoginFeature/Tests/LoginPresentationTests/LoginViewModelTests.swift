@@ -1,7 +1,7 @@
 import Foundation
 import LoginDomain
-import Testing
 @testable import LoginPresentation
+import Testing
 
 private actor AuthenticatorProbe: LoginAuthenticator {
     enum Reply: Sendable {

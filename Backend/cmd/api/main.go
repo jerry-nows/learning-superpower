@@ -206,29 +206,7 @@ func run(ctx context.Context, getenv func(string) string, deps startupDependenci
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	cfg, err := parseAPIConfig(os.Getenv)
-	if err != nil {
-		slog.Error("api startup failed")
-		os.Exit(1)
-	}
-	startupCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	a, err := buildApplication(startupCtx, cfg, productionDependencies())
-	cancel()
-	if err != nil {
-		slog.Error("api startup failed")
-		os.Exit(1)
-	}
-	defer a.close()
-	go func() {
-		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		if err := a.server.Shutdown(shutdownCtx); err != nil {
-			slog.Error("server shutdown failed")
-		}
-	}()
-	slog.Info("api listening", "port", cfg.port)
-	if err := a.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err := run(ctx, os.Getenv, productionDependencies()); err != nil {
 		slog.Error("api stopped unexpectedly")
 		os.Exit(1)
 	}

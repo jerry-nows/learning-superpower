@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import Networking
+import Testing
 
 private enum RefreshTestError: Error, Equatable, Sendable {
     case unavailable
@@ -31,8 +31,7 @@ func concurrentRefreshIsSingleFlight() async throws {
     let results = await withTaskGroup(of: Result<String, Error>.self, returning: [Result<String, Error>].self) { group in
         for _ in 0..<16 {
             group.addTask {
-                do { return .success(try await actor.refresh()) }
-                catch { return .failure(error) }
+                do { return .success(try await actor.refresh()) } catch { return .failure(error) }
             }
         }
 
@@ -55,8 +54,7 @@ func refreshFailureIsSharedAndClearsFlight() async throws {
     let results = await withTaskGroup(of: Result<String, Error>.self, returning: [Result<String, Error>].self) { group in
         for _ in 0..<4 {
             group.addTask {
-                do { return .success(try await actor.refresh()) }
-                catch { return .failure(error) }
+                do { return .success(try await actor.refresh()) } catch { return .failure(error) }
             }
         }
         var collected: [Result<String, Error>] = []
