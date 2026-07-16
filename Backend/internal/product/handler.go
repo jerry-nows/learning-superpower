@@ -64,8 +64,8 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 		methodError(w, r)
 		return
 	}
-	id := strings.TrimPrefix(r.URL.Path, "/v1/products/")
-	if id == "" || strings.Contains(id, "/") {
+	id, ok := productIDFromPath(r.URL.Path, "")
+	if !ok {
 		writeError(w, r, http.StatusBadRequest, "PRODUCT_INVALID_ID", false)
 		return
 	}
@@ -75,6 +75,101 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, item)
+}
+
+// Reviews serves the reviews section independently from the product detail.
+// A failure here only affects this response; callers can still load comments,
+// stock, and the product itself through their separate endpoints.
+func (h *Handler) Reviews(w http.ResponseWriter, r *http.Request) {
+	if !h.authorize(w, r) {
+		return
+	}
+	if r.Method != http.MethodGet {
+		methodError(w, r)
+		return
+	}
+	id, ok := productIDFromPath(r.URL.Path, "/reviews")
+	if !ok {
+		writeError(w, r, http.StatusBadRequest, "PRODUCT_INVALID_ID", false)
+		return
+	}
+	items, err := h.repository.ListReviews(r.Context(), ProductID(id))
+	if err != nil {
+		h.repositoryError(w, r, err)
+		return
+	}
+	if items == nil {
+		items = []Review{}
+	}
+	writeJSON(w, http.StatusOK, items)
+}
+
+// Comments serves the comments section independently from reviews and stock.
+func (h *Handler) Comments(w http.ResponseWriter, r *http.Request) {
+	if !h.authorize(w, r) {
+		return
+	}
+	if r.Method != http.MethodGet {
+		methodError(w, r)
+		return
+	}
+	id, ok := productIDFromPath(r.URL.Path, "/comments")
+	if !ok {
+		writeError(w, r, http.StatusBadRequest, "PRODUCT_INVALID_ID", false)
+		return
+	}
+	items, err := h.repository.ListComments(r.Context(), ProductID(id))
+	if err != nil {
+		h.repositoryError(w, r, err)
+		return
+	}
+	if items == nil {
+		items = []Comment{}
+	}
+	writeJSON(w, http.StatusOK, items)
+}
+
+// Stock serves the current inventory section independently. The endpoint is
+// deliberately read-only; reservation and checkout rules belong elsewhere.
+func (h *Handler) Stock(w http.ResponseWriter, r *http.Request) {
+	if !h.authorize(w, r) {
+		return
+	}
+	if r.Method != http.MethodGet {
+		methodError(w, r)
+		return
+	}
+	id, ok := productIDFromPath(r.URL.Path, "/stock")
+	if !ok {
+		writeError(w, r, http.StatusBadRequest, "PRODUCT_INVALID_ID", false)
+		return
+	}
+	stock, err := h.repository.GetStock(r.Context(), ProductID(id))
+	if err != nil {
+		h.repositoryError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, stock)
+}
+
+// productIDFromPath validates the exact detail route shape. An empty suffix
+// parses /v1/products/{id}; a non-empty suffix parses /v1/products/{id}{suffix}.
+func productIDFromPath(path, suffix string) (string, bool) {
+	prefix := "/v1/products/"
+	if !strings.HasPrefix(path, prefix) {
+		return "", false
+	}
+	value := strings.TrimPrefix(path, prefix)
+	if suffix != "" {
+		if !strings.HasSuffix(value, suffix) {
+			return "", false
+		}
+		value = strings.TrimSuffix(value, suffix)
+	}
+	if value == "" || strings.Contains(value, "/") || strings.TrimSpace(value) != value {
+		return "", false
+	}
+	return value, true
 }
 
 func (h *Handler) Categories(w http.ResponseWriter, r *http.Request) {
