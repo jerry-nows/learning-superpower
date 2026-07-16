@@ -19,6 +19,16 @@ MenuData target is present in `Package.swift`; the current package manifest only
 declares MenuDomain. Tests should be run with `swift test --disable-sandbox`
 after that manifest change lands.
 
+## Review fixes
+
+- Replaced the invalid one-line multiline-string success fixture with a valid
+  interpolated fixture.
+- HTTP 408 now maps to `serviceUnavailable`; `.cancelled` remains reserved for
+  client cancellation (`NSURLErrorCancelled` or task cancellation).
+- `swiftc -parse Packages/MenuFeature/Sources/MenuData/ProductRemoteDataSource.swift` passes.
+- `swiftc -parse Packages/MenuFeature/Tests/MenuDataTests/ProductRemoteDataSourceTests.swift` passes.
+- `git diff --check` passes.
+
 ## Notes
 
 The source is read-only and does not retry requests. Connectivity retry policy

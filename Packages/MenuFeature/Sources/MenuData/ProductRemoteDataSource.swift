@@ -180,7 +180,7 @@ public final class ProductRemoteDataSource: ProductRemoteSource, @unchecked Send
         if case let .statusCode(response) = error {
             if response.statusCode == 401 { return .unauthorized }
             if response.statusCode == 404 { return .notFound }
-            if response.statusCode == 408 { return .cancelled }
+            if response.statusCode == 408 { return .serviceUnavailable }
             if response.statusCode == 429 || response.statusCode >= 500 { return .serviceUnavailable }
             if let envelope = try? JSONDecoder().decode(ErrorEnvelope.self, from: response.data) {
                 return .server(code: envelope.code)

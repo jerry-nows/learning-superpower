@@ -26,7 +26,9 @@ private func delayedProvider(data: Data) -> MoyaProvider<ProductTarget> {
 
 @Test("remote source decodes list and detail payloads")
 func productRemoteSourceDecodesSuccess() async throws {
-    let list = Data("""{"items":[(String(decoding: productJSON, as: UTF8.self))],"page":1,"page_size":20,"total":1,"has_next":false}""".utf8)
+    let list = Data("""
+    {"items":[\(String(decoding: productJSON, as: UTF8.self))],"page":1,"page_size":20,"total":1,"has_next":false}
+    """.utf8)
     let source = ProductRemoteDataSource(baseURL: baseURL, accessToken: "token", provider: provider(status: 200, data: list))
     let page = try await source.list(query: .init())
     #expect(page.items.first?.id == "p1")
@@ -44,6 +46,11 @@ func productRemoteSourceMapsFailures() async {
     do { _ = try await malformed.detail(productID: "p1"); Issue.record("expected malformed") }
     catch let error as ProductRemoteDataSourceError { #expect(error == .malformedResponse) }
     catch { Issue.record("unexpected error") }
+
+    let timeout = ProductRemoteDataSource(baseURL: baseURL, provider: provider(status: 408, data: Data("{}".utf8)))
+    do { _ = try await timeout.detail(productID: "p1"); Issue.record("expected timeout") }
+    catch let error as ProductRemoteDataSourceError { #expect(error == .serviceUnavailable) }
+    catch { Issue.record("unexpected timeout error") }
 }
 
 @Test("cancelling a request cancels Moya and resumes exactly once")
