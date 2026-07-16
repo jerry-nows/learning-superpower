@@ -81,7 +81,7 @@
 - [ ] Verify route method and path contracts.
 - [ ] Commit `feat(product): wire product api`.
 
-### Task CR-169: Product seed data
+### Task 169 (CR-169): Product seed data
 
 **Files:** Modify `Backend/cmd/seed/main.go`; create `Backend/cmd/seed/product_seed_test.go`, `Infrastructure/tests/product_seed_test.sh`.
 
@@ -150,7 +150,7 @@
 - [ ] Add deterministic async state tests.
 - [ ] Commit `feat(menu): add product list view model`.
 
-### Task CR-177: Product detail view model
+### Task 177 (CR-177): Product detail view model
 
 **Files:** Create `Packages/MenuFeature/Sources/MenuPresentation/ProductDetailViewModel.swift`, tests.
 
