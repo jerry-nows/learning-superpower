@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -89,7 +90,7 @@ func (r *PostgresProductRepository) List(ctx context.Context, query ProductQuery
 }
 
 func (r *PostgresProductRepository) FindByID(ctx context.Context, id ProductID) (Product, error) {
-	if strings.TrimSpace(string(id)) == "" {
+	if _, err := uuid.Parse(strings.TrimSpace(string(id))); err != nil {
 		return Product{}, ErrProductNotFound
 	}
 	row := r.db.QueryRow(ctx, "SELECT "+productColumns+" FROM products WHERE id = $1 AND status = 'active'", string(id))
@@ -135,6 +136,9 @@ func (r *PostgresProductRepository) ListComments(context.Context, ProductID) ([]
 }
 
 func (r *PostgresProductRepository) GetStock(ctx context.Context, id ProductID) (Stock, error) {
+	if _, err := uuid.Parse(strings.TrimSpace(string(id))); err != nil {
+		return Stock{}, ErrProductNotFound
+	}
 	var stock Stock
 	var productID string
 	err := r.db.QueryRow(ctx, "SELECT id, stock, updated_at FROM products WHERE id = $1 AND status = 'active'", string(id)).Scan(&productID, &stock.Available, &stock.UpdatedAt)
