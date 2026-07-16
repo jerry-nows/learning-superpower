@@ -45,7 +45,7 @@
 - [ ] Add deterministic fake repository tests for empty and populated responses.
 - [ ] Commit `feat(product): define repository boundary`.
 
-### Task CR-165: PostgreSQL product repository
+### Task 165 (CR-165): PostgreSQL product repository
 
 **Files:** Create `Backend/internal/product/postgres_repository.go`, `Backend/internal/product/postgres_repository_test.go`.
 
@@ -114,7 +114,7 @@
 - [ ] Add redaction tests for access tokens and query payloads.
 - [ ] Commit `feat(menu): add product api targets`.
 
-### Task CR-173: Menu remote data source
+### Task 173 (CR-173): Menu remote data source
 
 **Files:** Create `Packages/MenuFeature/Sources/MenuData/ProductRemoteDataSource.swift`, `Packages/MenuFeature/Tests/MenuDataTests/ProductRemoteDataSourceTests.swift`.
 
