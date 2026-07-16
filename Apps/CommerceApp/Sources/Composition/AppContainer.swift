@@ -69,8 +69,21 @@ extension Container {
         }.singleton
     }
 
+    var productCacheStore: Factory<any ProductCacheStore> {
+        self { CoreDataProductCacheStore() }.singleton
+    }
+
+    var productRepository: Factory<any ProductRemoteSource> {
+        self {
+            ProductRepository(
+                remote: self.productRemoteSource(),
+                cache: self.productCacheStore()
+            )
+        }.singleton
+    }
+
     var menuCoordinator: Factory<MenuViewModelFactory> {
-        self { { input, source in
+        self { { _, source in
             ProductListViewModel(source: source)
         }}
     }
@@ -94,7 +107,7 @@ extension Container {
     func makeMenuCoordinator(input: MenuFlowInput = .init()) -> MenuCoordinator {
         MenuCoordinator(
             input: input,
-            source: productRemoteSource(),
+            source: productRepository(),
             viewModelFactory: menuCoordinator()
         )
     }

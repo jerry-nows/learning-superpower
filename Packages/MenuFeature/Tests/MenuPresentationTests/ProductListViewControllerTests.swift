@@ -51,6 +51,16 @@ final class ProductListViewControllerTests: XCTestCase {
         controller.viewDidDisappear(false)
     }
 
+    func testCategoryConfigurationCanHideCategoryLoading() async {
+        let model = ProductListViewModel(source: StubSource(categories: [Category(id: "c", name: "Coffee")]))
+        let controller = ProductListViewController(viewModel: model, showsCategories: false)
+        load(controller)
+        for _ in 0..<20 { try? await Task.sleep(for: .milliseconds(5)) }
+        let control = descendants(of: controller.view, matching: UISegmentedControl.self).first
+        XCTAssertTrue(control?.isHidden == true)
+        controller.viewDidDisappear(false)
+    }
+
     private func load(_ controller: UIViewController) {
         controller.loadViewIfNeeded()
         controller.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
@@ -67,20 +77,22 @@ final class ProductListViewControllerTests: XCTestCase {
 
 private final class StubSource: ProductRemoteSource, @unchecked Sendable {
     let page: ProductPageResponse
+    let categoryValues: [Category]
     init(page: ProductPageResponse = .init(
         items: [Product(id: "1", categoryID: "c", name: "Coffee", price: 10)],
         page: 1,
         pageSize: 20,
         total: 1,
         hasNext: false
-    )) {
+    ), categories: [Category] = []) {
         self.page = page
+        self.categoryValues = categories
     }
     func list(query: ProductQuery) async throws -> ProductPageResponse { page }
     func detail(productID: String) async throws -> Product { page.items[0] }
     func inventory(productID: String) async throws -> ProductStock { fatalError() }
     func ratingSummary(productID: String) async throws -> ProductRatingSummary { fatalError() }
     func comments(productID: String) async throws -> [ProductComment] { fatalError() }
-    func categories() async throws -> [Category] { [] }
+    func categories() async throws -> [Category] { categoryValues }
 }
 #endif

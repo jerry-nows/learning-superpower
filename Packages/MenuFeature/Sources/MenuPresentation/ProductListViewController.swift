@@ -9,6 +9,7 @@ import UIKit
 @MainActor
 public final class ProductListViewController: UIViewController {
     private let viewModel: ProductListViewModel
+    private let showsCategories: Bool
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
     private let searchBar = UISearchBar()
     private let categoryControl = UISegmentedControl()
@@ -20,8 +21,18 @@ public final class ProductListViewController: UIViewController {
     private var stateTask: Task<Void, Never>?
     private var lastState: ProductListViewState?
 
-    public init(viewModel: ProductListViewModel) {
+    /// Emitted when a row is selected so the feature coordinator can expose a
+    /// stable `MenuResult` without leaking UIKit details to the host.
+    public var onProductSelected: (@MainActor (String) -> Void)?
+
+    public init(
+        viewModel: ProductListViewModel,
+        showsCategories: Bool = true,
+        onProductSelected: (@MainActor (String) -> Void)? = nil
+    ) {
         self.viewModel = viewModel
+        self.showsCategories = showsCategories
+        self.onProductSelected = onProductSelected
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -35,7 +46,7 @@ public final class ProductListViewController: UIViewController {
         configureView()
         render(viewModel.state)
         viewModel.load()
-        viewModel.loadCategories()
+        if showsCategories { viewModel.loadCategories() }
     }
 
     public override func viewWillAppear(_ animated: Bool) {
@@ -299,6 +310,21 @@ extension ProductListViewController: UITableViewDataSource, UITableViewDelegate 
         guard case let .loaded(snapshot) = viewModel.state,
               snapshot.hasNextPage, indexPath.row >= snapshot.items.count - 2 else { return }
         viewModel.loadNextPage()
+    }
+
+    public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        defer { tableView.deselectRow(at: indexPath, animated: true) }
+        let product: Product?
+        switch viewModel.state {
+        case let .loaded(snapshot), let .refreshing(snapshot), let .loadingNextPage(snapshot), let .empty(snapshot):
+            product = snapshot.items.indices.contains(indexPath.row) ? snapshot.items[indexPath.row] : nil
+        case let .failure(snapshot, _):
+            product = snapshot?.items.indices.contains(indexPath.row) == true ? snapshot?.items[indexPath.row] : nil
+        case .idle, .loading:
+            product = nil
+        }
+        guard let product else { return }
+        onProductSelected?(product.id)
     }
 }
 

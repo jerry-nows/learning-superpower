@@ -33,6 +33,12 @@ public final class MenuCoordinator {
     }
 
     public func makeViewController() -> ProductListViewController {
-        ProductListViewController(viewModel: viewModelFactory(input, source))
+        ProductListViewController(
+            viewModel: viewModelFactory(input, source),
+            showsCategories: input.showsCategories,
+            onProductSelected: { [weak self] productID in
+                self?.onResult?(.selectedProduct(id: productID))
+            }
+        )
     }
 }
