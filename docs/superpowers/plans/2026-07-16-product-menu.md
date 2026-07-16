@@ -63,7 +63,7 @@
 - [ ] Add handler tests for auth, invalid query, empty page, and success.
 - [ ] Commit `feat(product): add product list handlers`.
 
-### Task CR-167: Product detail section handlers
+### Task 167 (CR-167): Product detail section handlers
 
 **Files:** Modify `Backend/internal/product/handler.go`; create `Backend/internal/product/detail_handler_test.go`.
 
@@ -132,7 +132,7 @@
 - [ ] Add tests for cache hit, cache miss, invalidation, and stale fallback.
 - [ ] Commit `feat(menu): add product cache repository`.
 
-### Task CR-175: Connectivity resume coordinator
+### Task 175 (CR-175): Connectivity resume coordinator
 
 **Files:** Modify `Packages/Core/Sources/Core/ConnectivityMonitor.swift`; create `Packages/MenuFeature/Sources/MenuData/ProductResumeCoordinator.swift`, tests.
 
