@@ -20,8 +20,16 @@ public final class ProductRepository: ProductRemoteSource, @unchecked Sendable {
     private let clock: @Sendable () -> Date
     private let freshnessInterval: TimeInterval
 
-    public init(remote: ProductRemoteSource, cache: ProductCacheStore, freshnessInterval: TimeInterval = 300, clock: @escaping @Sendable () -> Date = Date.init) {
-        self.remote = remote; self.cache = cache; self.freshnessInterval = max(0, freshnessInterval); self.clock = clock
+    public init(
+        remote: ProductRemoteSource,
+        cache: ProductCacheStore,
+        freshnessInterval: TimeInterval = 300,
+        clock: @escaping @Sendable () -> Date = Date.init
+    ) {
+        self.remote = remote
+        self.cache = cache
+        self.freshnessInterval = max(0, freshnessInterval)
+        self.clock = clock
     }
 
     public func list(query: ProductQuery) async throws -> ProductPageResponse { try await listValue(query: query).value }
@@ -34,10 +42,26 @@ public final class ProductRepository: ProductRemoteSource, @unchecked Sendable {
     public func listValue(query: ProductQuery) async throws -> ProductCachedValue<ProductPageResponse> {
         try await load(key: "list:\(queryKey(query))", decode: ProductPageResponse.self) { try await remote.list(query: query) }
     }
-    public func detailValue(productID: String) async throws -> ProductCachedValue<Product> { try await load(key: "detail:\(productID)", decode: Product.self) { try await remote.detail(productID: productID) } }
-    public func inventoryValue(productID: String) async throws -> ProductCachedValue<ProductStock> { try await load(key: "inventory:\(productID)", decode: ProductStock.self) { try await remote.inventory(productID: productID) } }
-    public func ratingValue(productID: String) async throws -> ProductCachedValue<ProductRatingSummary> { try await load(key: "rating:\(productID)", decode: ProductRatingSummary.self) { try await remote.ratingSummary(productID: productID) } }
-    public func commentsValue(productID: String) async throws -> ProductCachedValue<[ProductComment]> { try await load(key: "comments:\(productID)", decode: [ProductComment].self) { try await remote.comments(productID: productID) } }
+    public func detailValue(productID: String) async throws -> ProductCachedValue<Product> {
+        try await load(key: "detail:\(productID)", decode: Product.self) {
+            try await remote.detail(productID: productID)
+        }
+    }
+    public func inventoryValue(productID: String) async throws -> ProductCachedValue<ProductStock> {
+        try await load(key: "inventory:\(productID)", decode: ProductStock.self) {
+            try await remote.inventory(productID: productID)
+        }
+    }
+    public func ratingValue(productID: String) async throws -> ProductCachedValue<ProductRatingSummary> {
+        try await load(key: "rating:\(productID)", decode: ProductRatingSummary.self) {
+            try await remote.ratingSummary(productID: productID)
+        }
+    }
+    public func commentsValue(productID: String) async throws -> ProductCachedValue<[ProductComment]> {
+        try await load(key: "comments:\(productID)", decode: [ProductComment].self) {
+            try await remote.comments(productID: productID)
+        }
+    }
     public func categoriesValue() async throws -> ProductCachedValue<[Category]> { try await load(key: "categories", decode: [Category].self) { try await remote.categories() } }
 
     public func invalidateList(query: ProductQuery) async throws { try await cache.invalidate(key: "list:\(queryKey(query))") }

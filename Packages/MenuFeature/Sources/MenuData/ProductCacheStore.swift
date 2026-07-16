@@ -29,23 +29,34 @@ public actor CoreDataProductCacheStore: ProductCacheStore {
         entity.name = "ProductCacheEntry"
         entity.managedObjectClassName = "NSManagedObject"
         let key = NSAttributeDescription()
-        key.name = "key"; key.attributeType = .stringAttributeType; key.isOptional = false
+        key.name = "key"
+        key.attributeType = .stringAttributeType
+        key.isOptional = false
         let payload = NSAttributeDescription()
-        payload.name = "payload"; payload.attributeType = .binaryDataAttributeType; payload.isOptional = false
+        payload.name = "payload"
+        payload.attributeType = .binaryDataAttributeType
+        payload.isOptional = false
         let cachedAt = NSAttributeDescription()
-        cachedAt.name = "cachedAt"; cachedAt.attributeType = .dateAttributeType; cachedAt.isOptional = false
+        cachedAt.name = "cachedAt"
+        cachedAt.attributeType = .dateAttributeType
+        cachedAt.isOptional = false
         entity.properties = [key, payload, cachedAt]
         entity.uniquenessConstraints = [["key"]]
         model.entities = [entity]
 
-        container = NSPersistentContainer(name: "ProductCache", managedObjectModel: model)
+        container = NSPersistentContainer(
+            name: "ProductCache",
+            managedObjectModel: model
+        )
         let description = NSPersistentStoreDescription()
         if inMemory { description.url = URL(fileURLWithPath: "/dev/null") }
         description.shouldAddStoreAsynchronously = false
         container.persistentStoreDescriptions = [description]
         var loadError: Error?
         container.loadPersistentStores { _, error in loadError = error }
-        if let loadError { fatalError("Unable to load product cache: \(loadError)") }
+        if let loadError {
+            fatalError("Unable to load product cache: \(loadError)")
+        }
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         container.viewContext.undoManager = nil
     }
@@ -65,9 +76,16 @@ public actor CoreDataProductCacheStore: ProductCacheStore {
     public func save(_ entry: ProductCacheEntry, for key: String) async throws {
         try perform { context in
             let request = NSFetchRequest<NSManagedObject>(entityName: "ProductCacheEntry")
-            request.fetchLimit = 1; request.predicate = NSPredicate(format: "key == %@", key)
-            let object = try context.fetch(request).first ?? NSEntityDescription.insertNewObject(forEntityName: "ProductCacheEntry", into: context)
-            object.setValue(key, forKey: "key"); object.setValue(entry.payload, forKey: "payload"); object.setValue(entry.cachedAt, forKey: "cachedAt")
+            request.fetchLimit = 1
+            request.predicate = NSPredicate(format: "key == %@", key)
+            let object = try context.fetch(request).first
+                ?? NSEntityDescription.insertNewObject(
+                    forEntityName: "ProductCacheEntry",
+                    into: context
+                )
+            object.setValue(key, forKey: "key")
+            object.setValue(entry.payload, forKey: "payload")
+            object.setValue(entry.cachedAt, forKey: "cachedAt")
             try context.save()
         }
     }
