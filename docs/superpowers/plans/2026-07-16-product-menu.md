@@ -159,7 +159,7 @@
 - [ ] Add partial-success, cancellation, offline, and all-success tests.
 - [ ] Commit `feat(menu): add concurrent product detail loading`.
 
-### Task CR-178: Product list UIKit screen
+### Task 178 (CR-178): Product list UIKit screen
 
 **Files:** Create `Packages/MenuFeature/Sources/MenuPresentation/ProductListViewController.swift`, tests.
 
@@ -167,7 +167,7 @@
 - [ ] Add UI tests for loading, refresh, pagination, and empty state.
 - [ ] Commit `feat(menu): add product list screen`.
 
-### Task CR-179: Product detail UIKit screen
+### Task 179 (CR-179): Product detail UIKit screen
 
 **Files:** Create `Packages/MenuFeature/Sources/MenuPresentation/ProductDetailViewController.swift`, tests.
 
