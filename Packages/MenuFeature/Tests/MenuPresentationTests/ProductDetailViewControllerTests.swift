@@ -20,13 +20,13 @@ final class ProductDetailViewControllerTests: XCTestCase {
             viewModel: ProductDetailViewModel(source: StubSource())
         )
         controller.loadViewIfNeeded()
-        let labels = controller.view.subviews
-            .compactMap { $0 as? UIScrollView }
-            .flatMap { $0.subviews }
-            .flatMap { ($0 as? UIStackView)?.arrangedSubviews ?? [] }
-            .flatMap { ($0 as? UIStackView)?.arrangedSubviews ?? [] }
-            .compactMap { $0 as? UILabel }
+        let labels = labels(in: controller.view)
+        XCTAssertFalse(labels.isEmpty)
         XCTAssertTrue(labels.allSatisfy { $0.adjustsFontForContentSizeCategory })
+    }
+
+    private func labels(in view: UIView) -> [UILabel] {
+        [view as? UILabel].compactMap { $0 } + view.subviews.flatMap { labels(in: $0) }
     }
 }
 
