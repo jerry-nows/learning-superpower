@@ -76,6 +76,40 @@ func TestProductDetailSectionHandlersReturnIndependentSuccessResponses(t *testin
 	if stock.Code != http.StatusOK || json.NewDecoder(stock.Body).Decode(&gotStock) != nil || gotStock.Available != 7 {
 		t.Fatalf("stock status=%d value=%+v", stock.Code, gotStock)
 	}
+	inventory := detailRequest(t, h.Inventory, http.MethodGet, "/v1/products/p1/inventory")
+	if inventory.Code != http.StatusOK {
+		t.Fatalf("inventory alias status=%d body=%s", inventory.Code, inventory.Body)
+	}
+	summary := detailRequest(t, h.RatingSummary, http.MethodGet, "/v1/products/p1/rating-summary")
+	var gotSummary RatingSummary
+	if summary.Code != http.StatusOK || json.NewDecoder(summary.Body).Decode(&gotSummary) != nil || gotSummary.ReviewCount != 1 || gotSummary.AverageRating != 5 {
+		t.Fatalf("summary status=%d value=%+v", summary.Code, gotSummary)
+	}
+}
+
+func TestProductDetailSectionHandlersRequireAuthorization(t *testing.T) {
+	h := NewHandler(detailHandlerRepo{}, productVerifier{})
+	sections := []struct {
+		name string
+		h    http.HandlerFunc
+		path string
+	}{
+		{"reviews", h.Reviews, "/v1/products/p1/reviews"},
+		{"comments", h.Comments, "/v1/products/p1/comments"},
+		{"stock", h.Stock, "/v1/products/p1/stock"},
+		{"inventory", h.Inventory, "/v1/products/p1/inventory"},
+		{"rating-summary", h.RatingSummary, "/v1/products/p1/rating-summary"},
+	}
+	for _, section := range sections {
+		t.Run(section.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodGet, section.path, nil)
+			w := httptest.NewRecorder()
+			section.h(w, r)
+			if w.Code != http.StatusUnauthorized {
+				t.Fatalf("status=%d body=%s", w.Code, w.Body)
+			}
+		})
+	}
 }
 
 func TestProductDetailSectionFailureDoesNotAffectOtherSections(t *testing.T) {

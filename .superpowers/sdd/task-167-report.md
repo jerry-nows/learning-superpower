@@ -23,3 +23,13 @@ go test ./...                PASS
 ## Notes
 
 The router wiring is intentionally left to CR-168. The iOS client currently names the stock section `inventory`; a route alias can be added during API wiring if required by the client contract.
+
+## Review follow-up
+
+- Added `/inventory` as an API-compatible alias for `/stock`.
+- Added `/rating-summary`, deriving average rating and review count from the independent reviews read.
+- Added unauthorized coverage for every detail section endpoint.
+
+```text
+go test ./...                PASS
+```

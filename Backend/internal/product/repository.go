@@ -36,6 +36,13 @@ type Stock struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// RatingSummary is the compact aggregate used by the product detail screen.
+type RatingSummary struct {
+	ProductID     ProductID `json:"product_id"`
+	AverageRating float64   `json:"average_rating"`
+	ReviewCount   int       `json:"review_count"`
+}
+
 var (
 	ErrProductNotFound  = errors.New("product not found")
 	ErrCategoryNotFound = errors.New("category not found")

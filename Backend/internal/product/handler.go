@@ -132,6 +132,15 @@ func (h *Handler) Comments(w http.ResponseWriter, r *http.Request) {
 // Stock serves the current inventory section independently. The endpoint is
 // deliberately read-only; reservation and checkout rules belong elsewhere.
 func (h *Handler) Stock(w http.ResponseWriter, r *http.Request) {
+	h.stockSection(w, r, "/stock")
+}
+
+// Inventory is the API-compatible alias for Stock used by the iOS client.
+func (h *Handler) Inventory(w http.ResponseWriter, r *http.Request) {
+	h.stockSection(w, r, "/inventory")
+}
+
+func (h *Handler) stockSection(w http.ResponseWriter, r *http.Request, suffix string) {
 	if !h.authorize(w, r) {
 		return
 	}
@@ -139,7 +148,7 @@ func (h *Handler) Stock(w http.ResponseWriter, r *http.Request) {
 		methodError(w, r)
 		return
 	}
-	id, ok := productIDFromPath(r.URL.Path, "/stock")
+	id, ok := productIDFromPath(r.URL.Path, suffix)
 	if !ok {
 		writeError(w, r, http.StatusBadRequest, "PRODUCT_INVALID_ID", false)
 		return
@@ -150,6 +159,38 @@ func (h *Handler) Stock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, stock)
+}
+
+// RatingSummary serves the aggregate review data expected by the detail UI.
+// It derives from the same independent reviews read and therefore does not
+// affect comments or inventory when the review section is unavailable.
+func (h *Handler) RatingSummary(w http.ResponseWriter, r *http.Request) {
+	if !h.authorize(w, r) {
+		return
+	}
+	if r.Method != http.MethodGet {
+		methodError(w, r)
+		return
+	}
+	id, ok := productIDFromPath(r.URL.Path, "/rating-summary")
+	if !ok {
+		writeError(w, r, http.StatusBadRequest, "PRODUCT_INVALID_ID", false)
+		return
+	}
+	reviews, err := h.repository.ListReviews(r.Context(), ProductID(id))
+	if err != nil {
+		h.repositoryError(w, r, err)
+		return
+	}
+	var total int
+	for _, review := range reviews {
+		total += review.Rating
+	}
+	average := float64(0)
+	if len(reviews) > 0 {
+		average = float64(total) / float64(len(reviews))
+	}
+	writeJSON(w, http.StatusOK, RatingSummary{ProductID: ProductID(id), AverageRating: average, ReviewCount: len(reviews)})
 }
 
 // productIDFromPath validates the exact detail route shape. An empty suffix
