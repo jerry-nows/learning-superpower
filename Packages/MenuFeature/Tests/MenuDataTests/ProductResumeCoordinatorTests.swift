@@ -50,6 +50,27 @@ func paymentNotRetried() async {
     #expect(attempts.value == 1)
 }
 
+@Test("cancelled read resume returns without connectivity")
+func cancelledReadResume() async {
+    let monitor = ConnectivityMonitor(initialStatus: .offline)
+    let coordinator = ProductResumeCoordinator(monitor: monitor)
+    let task = Task {
+        try await coordinator.executeRead {
+            throw ProductRemoteDataSourceError.transport
+        }
+    }
+    try? await Task.sleep(for: .milliseconds(20))
+    task.cancel()
+    do {
+        _ = try await task.value
+        Issue.record("expected cancellation")
+    } catch is CancellationError {
+        // Expected.
+    } catch {
+        Issue.record("unexpected error: \(error)")
+    }
+}
+
 private final class LockBox<Value: Sendable>: @unchecked Sendable {
     private let lock = NSLock()
     private var storage: Value

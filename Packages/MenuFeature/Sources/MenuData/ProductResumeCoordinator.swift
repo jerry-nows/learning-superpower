@@ -53,11 +53,24 @@ public final class ProductResumeCoordinator: @unchecked Sendable {
     }
 
     private func waitUntilOnline() async throws {
-        for await status in monitor.updates() {
-            if status == .online { return }
-            try Task.checkCancellation()
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask { [monitor] in
+                for await status in monitor.updates() {
+                    if status == .online { return }
+                }
+                throw CancellationError()
+            }
+            // AsyncStream does not necessarily wake an iterator when its
+            // parent task is cancelled. This sibling gives cancellation a
+            // bounded wake-up path even when no connectivity event arrives.
+            group.addTask {
+                while true {
+                    try Task.checkCancellation()
+                    try await Task.sleep(for: .milliseconds(20))
+                }
+            }
+            defer { group.cancelAll() }
+            try await group.next()
         }
-        try Task.checkCancellation()
-        throw CancellationError()
     }
 }
