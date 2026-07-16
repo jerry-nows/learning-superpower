@@ -59,6 +59,31 @@ func productListFilterAndSort() async {
     #expect(source.queries.last?.pagination.cursor == nil)
 }
 
+@Test("source cancellation clears the task so the initial load can retry")
+@MainActor
+func productListCancellationThenRetry() async {
+    let source = CancellationThenSuccessSource()
+    let model = ProductListViewModel(source: source, searchDebounce: .zero)
+    model.load()
+    await waitUntil { if case .idle = model.state { return true }; return false }
+    model.load()
+    await waitUntil { if case let .loaded(snapshot) = model.state { return snapshot.items.count == 1 }; return false }
+    #expect(source.listCalls == 2)
+}
+
+@Test("refresh failure keeps the previously loaded rows")
+@MainActor
+func productListRefreshFailurePreservesRows() async {
+    let source = RefreshFailureSource()
+    let model = ProductListViewModel(source: source, searchDebounce: .zero)
+    model.load()
+    await waitUntil { if case .loaded = model.state { return true }; return false }
+    model.refresh()
+    await waitUntil { if case .failure = model.state { return true }; return false }
+    guard case let .failure(snapshot, _) = model.state else { Issue.record("expected failure"); return }
+    #expect(snapshot?.items.map(\.id) == ["existing"])
+}
+
 private func product(_ id: String) -> Product {
     Product(id: id, categoryID: "category", name: id, price: 100)
 }
@@ -85,6 +110,42 @@ private final class ListSource: ProductRemoteSource, @unchecked Sendable {
         let page = pages.isEmpty ? ProductPageResponse(items: [], page: 1, pageSize: 20, total: 0, hasNext: false) : pages.removeFirst()
         lock.unlock()
         return page
+    }
+
+    func detail(productID: String) async throws -> Product { fatalError() }
+    func inventory(productID: String) async throws -> ProductStock { fatalError() }
+    func ratingSummary(productID: String) async throws -> ProductRatingSummary { fatalError() }
+    func comments(productID: String) async throws -> [ProductComment] { fatalError() }
+    func categories() async throws -> [Category] { fatalError() }
+}
+
+private final class CancellationThenSuccessSource: ProductRemoteSource, @unchecked Sendable {
+    private let lock = NSLock()
+    private(set) var listCalls = 0
+
+    func list(query: ProductQuery) async throws -> ProductPageResponse {
+        lock.lock(); listCalls += 1; let call = listCalls; lock.unlock()
+        if call == 1 { throw CancellationError() }
+        return ProductPageResponse(items: [product("retried")], page: 1, pageSize: 20, total: 1, hasNext: false)
+    }
+
+    func detail(productID: String) async throws -> Product { fatalError() }
+    func inventory(productID: String) async throws -> ProductStock { fatalError() }
+    func ratingSummary(productID: String) async throws -> ProductRatingSummary { fatalError() }
+    func comments(productID: String) async throws -> [ProductComment] { fatalError() }
+    func categories() async throws -> [Category] { fatalError() }
+}
+
+private final class RefreshFailureSource: ProductRemoteSource, @unchecked Sendable {
+    private let lock = NSLock()
+    private var listCalls = 0
+
+    func list(query: ProductQuery) async throws -> ProductPageResponse {
+        lock.lock(); listCalls += 1; let call = listCalls; lock.unlock()
+        if call == 1 {
+            return ProductPageResponse(items: [product("existing")], page: 1, pageSize: 20, total: 1, hasNext: false)
+        }
+        throw ProductRemoteDataSourceError.transport
     }
 
     func detail(productID: String) async throws -> Product { fatalError() }

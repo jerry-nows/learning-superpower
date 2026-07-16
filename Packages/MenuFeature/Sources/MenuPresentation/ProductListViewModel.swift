@@ -77,6 +77,7 @@ public final class ProductListViewModel {
         guard categoriesTask == nil else { return }
         categoriesTask = Task { [weak self] in
             guard let self else { return }
+            defer { categoriesTask = nil }
             do {
                 let categories = try await source.categories()
                 guard !Task.isCancelled else { return }
@@ -93,7 +94,6 @@ public final class ProductListViewModel {
             } catch {
                 // Category loading is auxiliary; the product list remains usable.
             }
-            categoriesTask = nil
         }
     }
 
@@ -179,17 +179,24 @@ public final class ProductListViewModel {
         if kind == .initial, state == .idle { state = .loading }
         requestTask = Task { [weak self] in
             guard let self else { return }
+            defer {
+                if generation == requestGeneration { requestTask = nil }
+            }
             do {
                 let page = try await source.list(query: query)
                 guard !Task.isCancelled, generation == requestGeneration else { return }
                 apply(page, query: query, kind: kind)
             } catch is CancellationError {
+                guard generation == requestGeneration else { return }
+                switch kind {
+                case .initial: state = .idle
+                case .refresh, .nextPage: state = .loaded(snapshot)
+                }
                 return
             } catch {
                 guard !Task.isCancelled, generation == requestGeneration else { return }
-                state = .failure(kind == .nextPage ? snapshot : nil, message: message(for: error))
+                state = .failure(kind == .initial ? nil : snapshot, message: message(for: error))
             }
-            requestTask = nil
         }
     }
 
