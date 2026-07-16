@@ -10,14 +10,14 @@ public struct ProductListSnapshot: Sendable, Equatable {
     public let query: ProductQuery
     public let hasNextPage: Bool
     public let nextPageSkeletonCount: Int
-    public let categories: [Category]
+    public let categories: [ProductCategory]
 
     public init(
         items: [Product] = [],
         query: ProductQuery = .init(),
         hasNextPage: Bool = false,
         nextPageSkeletonCount: Int = 0,
-        categories: [Category] = []
+        categories: [ProductCategory] = []
     ) {
         self.items = items
         self.query = query

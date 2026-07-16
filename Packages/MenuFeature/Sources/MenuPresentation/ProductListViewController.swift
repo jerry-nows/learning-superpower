@@ -2,6 +2,8 @@ import DesignSystem
 import MenuDomain
 import UIKit
 
+private typealias ProductCategory = MenuDomain.Category
+
 /// UIKit catalogue screen. Product loading remains owned by `ProductListViewModel`;
 /// the controller only translates user gestures into query changes and renders
 /// the immutable view state.
@@ -187,7 +189,7 @@ public final class ProductListViewController: UIViewController {
         tableView.accessibilityValue = accessibilityValue(for: state)
     }
 
-    private func updateCategories(_ categories: [Category]) {
+    private func updateCategories(_ categories: [ProductCategory]) {
         guard categoryControl.numberOfSegments != categories.count + 1 else { return }
         categoryControl.removeAllSegments()
         categoryControl.insertSegment(withTitle: "All", at: 0, animated: false)

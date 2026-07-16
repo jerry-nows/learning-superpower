@@ -37,7 +37,7 @@ public final class ProductRepository: ProductRemoteSource, @unchecked Sendable {
     public func inventory(productID: String) async throws -> ProductStock { try await inventoryValue(productID: productID).value }
     public func ratingSummary(productID: String) async throws -> ProductRatingSummary { try await ratingValue(productID: productID).value }
     public func comments(productID: String) async throws -> [ProductComment] { try await commentsValue(productID: productID).value }
-    public func categories() async throws -> [Category] { try await categoriesValue().value }
+    public func categories() async throws -> [ProductCategory] { try await categoriesValue().value }
 
     public func listValue(query: ProductQuery) async throws -> ProductCachedValue<ProductPageResponse> {
         try await load(key: "list:\(queryKey(query))", decode: ProductPageResponse.self) { try await self.remote.list(query: query) }
@@ -62,8 +62,8 @@ public final class ProductRepository: ProductRemoteSource, @unchecked Sendable {
             try await self.remote.comments(productID: productID)
         }
     }
-    public func categoriesValue() async throws -> ProductCachedValue<[Category]> {
-        try await load(key: "categories", decode: [Category].self) {
+    public func categoriesValue() async throws -> ProductCachedValue<[ProductCategory]> {
+        try await load(key: "categories", decode: [ProductCategory].self) {
             try await self.remote.categories()
         }
     }

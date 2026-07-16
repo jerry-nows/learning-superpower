@@ -2,6 +2,8 @@ import Foundation
 import MenuDomain
 import Networking
 
+public typealias ProductCategory = MenuDomain.Category
+
 public struct ProductPageResponse: Codable, Equatable, Sendable {
     public let items: [Product]
     public let page: Int
@@ -91,7 +93,7 @@ public protocol ProductRemoteSource: Sendable {
     func inventory(productID: String) async throws -> ProductStock
     func ratingSummary(productID: String) async throws -> ProductRatingSummary
     func comments(productID: String) async throws -> [ProductComment]
-    func categories() async throws -> [Category]
+    func categories() async throws -> [ProductCategory]
 }
 
 /// Moya-backed, read-only catalog source. Each request gets a fresh decoder so
@@ -132,7 +134,7 @@ public final class ProductRemoteDataSource: ProductRemoteSource, @unchecked Send
         try await request(.comments(baseURL: baseURL, productID: productID, accessToken: accessToken), response: [ProductComment].self)
     }
 
-    public func categories() async throws -> [Category] {
+    public func categories() async throws -> [ProductCategory] {
         (try await request(.categories(baseURL: baseURL, accessToken: accessToken), response: [WireCategory].self)).map(\.value)
     }
 
@@ -217,7 +219,7 @@ private struct WireProduct: Decodable, Sendable {
 private struct WireCategory: Decodable, Sendable {
     let id: String
     let name: String
-    var value: Category { Category(id: id, name: name) }
+    var value: ProductCategory { ProductCategory(id: id, name: name) }
 }
 
 private final class RequestState<Response>: @unchecked Sendable {
