@@ -54,7 +54,7 @@
 - [ ] Add integration coverage using the existing PostgreSQL test container pattern.
 - [ ] Commit `feat(product): implement postgres product repository`.
 
-### Task CR-166: Product HTTP handlers
+### Task 166 (CR-166): Product HTTP handlers
 
 **Files:** Create `Backend/internal/product/handler.go`, `Backend/internal/product/handler_test.go`.
 
@@ -123,7 +123,7 @@
 - [ ] Add success, failure, malformed, and cancellation tests.
 - [ ] Commit `feat(menu): implement product remote source`.
 
-### Task CR-174: Product cache repository
+### Task 174 (CR-174): Product cache repository
 
 **Files:** Create `Packages/MenuFeature/Sources/MenuData/ProductRepository.swift`, `Packages/MenuFeature/Sources/MenuData/ProductCacheStore.swift`, `Packages/MenuFeature/Tests/MenuDataTests/ProductRepositoryTests.swift`.
 
