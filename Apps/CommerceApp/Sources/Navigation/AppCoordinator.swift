@@ -1,14 +1,17 @@
 import DesignSystem
+import LoginPresentation
 import UIKit
 @preconcurrency import XCoordinator
 
 enum AppRoute: Route {
     case login
+    case authenticated
 }
 
 @MainActor
-final class AppCoordinator: NavigationCoordinator<AppRoute>, ApplicationCoordinating {
+final class AppCoordinator: NavigationCoordinator<AppRoute>, ApplicationCoordinating, @unchecked Sendable {
     private var hasStarted = false
+    private var loginCoordinator: LoginCoordinator?
 
     init() {
         super.init(rootViewController: UINavigationController(), initialRoute: nil)
@@ -24,22 +27,33 @@ final class AppCoordinator: NavigationCoordinator<AppRoute>, ApplicationCoordina
     }
 
     override func prepareTransition(for route: AppRoute) -> NavigationTransition {
-        // XCoordinator's synchronous route API predates Swift actor annotations.
-        // UIKit navigation invokes this hook on the main thread; assert that invariant at runtime.
+        // XCoordinator's synchronous route API predates actor annotations.
         MainActor.assumeIsolated {
             switch route {
             case .login:
-                .push(LoginPlaceholderViewController())
+                let coordinator = AppContainer.shared.makeLoginCoordinator()
+                loginCoordinator = coordinator
+                coordinator.onResult = { [weak self] result in
+                    guard case .authenticated = result else { return }
+                    self?.loginCoordinator?.onResult = nil
+                    self?.loginCoordinator = nil
+                    self?.strongRouter.trigger(.authenticated)
+                }
+                return .push(coordinator.makeViewController())
+            case .authenticated:
+                // Replace the login stack so authenticated users cannot back
+                // navigate into a completed credential flow.
+                return .set([AuthenticatedPlaceholderViewController()])
             }
         }
     }
 }
 
 @MainActor
-private final class LoginPlaceholderViewController: UIViewController {
+private final class AuthenticatedPlaceholderViewController: UIViewController {
     init() {
         super.init(nibName: nil, bundle: nil)
-        title = "Sign in"
+        title = "Products"
     }
 
     @available(*, unavailable)
