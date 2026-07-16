@@ -72,7 +72,7 @@
 - [ ] Add tests for successful and unavailable sections.
 - [ ] Commit `feat(product): expose detail sections`.
 
-### Task CR-168: Product router and API wiring
+### Task 168 (CR-168): Product router and API wiring
 
 **Files:** Modify `Backend/internal/platform/httpapi/router.go`, `Backend/cmd/api/main.go`; create `Backend/internal/product/router_contract_test.go`.
 
@@ -141,7 +141,7 @@
 - [ ] Never automatically retry payment or mutation requests.
 - [ ] Commit `feat(menu): resume product reads after connectivity`.
 
-### Task CR-176: Product list view model
+### Task 176 (CR-176): Product list view model
 
 **Files:** Create `Packages/MenuFeature/Sources/MenuPresentation/ProductListViewModel.swift`, tests.
 
