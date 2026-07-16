@@ -225,6 +225,8 @@ public final class ProductListViewModel {
 
     private func cancelRequests() {
         searchTask?.cancel()
+        let categoriesTask = categoriesTask
+        self.categoriesTask = nil
         categoriesTask?.cancel()
         cancelRequestOnly()
     }
