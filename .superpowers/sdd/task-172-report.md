@@ -23,3 +23,16 @@ Verification:
 The MenuFeature package manifest currently exposes only `MenuDomain`; wiring the
 new `MenuData` target and test target is intentionally deferred to the next data
 layer CR so this task remains limited to the target contract.
+
+## Review fix
+
+Removed pre-escaping of product IDs from `path`. Moya's `URL(target:)` now owns
+the single URL construction/escaping step, avoiding `%25` double encoding. The
+contract test now verifies both `URL(target:)` and `Endpoint.urlRequest()` for
+the final detail URL (`/v1/products/item-42`).
+
+Verification after the fix:
+
+- `swiftc -parse Packages/MenuFeature/Sources/MenuData/ProductTarget.swift` — pass.
+- `swiftc -parse Packages/MenuFeature/Tests/MenuDataTests/ProductTargetTests.swift` — pass.
+- `git diff --check` — pass.

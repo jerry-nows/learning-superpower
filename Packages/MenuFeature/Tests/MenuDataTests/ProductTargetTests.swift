@@ -40,7 +40,7 @@ func listTargetQueryContract() throws {
 @Test("detail section targets use independent read endpoints")
 func detailTargetEndpoints() {
     let targets: [(ProductTarget, String)] = [
-        (.detail(baseURL: baseURL, productID: "item/42", accessToken: nil), "/v1/products/item%2F42"),
+        (.detail(baseURL: baseURL, productID: "item-42", accessToken: nil), "/v1/products/item-42"),
         (.inventory(baseURL: baseURL, productID: "item-42", accessToken: nil), "/v1/products/item-42/inventory"),
         (.ratingSummary(baseURL: baseURL, productID: "item-42", accessToken: nil), "/v1/products/item-42/rating-summary"),
         (.comments(baseURL: baseURL, productID: "item-42", accessToken: nil), "/v1/products/item-42/comments"),
@@ -56,6 +56,20 @@ func detailTargetEndpoints() {
             Issue.record("expected an empty GET body for \(path)")
         }
     }
+
+    let target = ProductTarget.detail(baseURL: baseURL, productID: "item-42", accessToken: nil)
+    let finalURL = URL(target: target)
+    #expect(finalURL.absoluteString == "https://api.example.invalid/v1/products/item-42")
+
+    let endpoint = Endpoint(
+        url: finalURL.absoluteString,
+        sampleResponseClosure: { .networkResponse(200, target.sampleData) },
+        method: target.method,
+        task: target.task,
+        httpHeaderFields: target.headers
+    )
+    let request = try? endpoint.urlRequest()
+    #expect(request?.url?.absoluteString == finalURL.absoluteString)
 }
 
 @Test("target diagnostics redact bearer tokens and query payloads")

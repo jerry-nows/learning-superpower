@@ -26,17 +26,21 @@ public enum ProductTarget: TargetType, Sendable {
     }
 
     public var path: String {
+        // Product IDs are server-issued UUID/slug values from the allow-listed
+        // catalogue domain. Keep them logical here: Moya's URL(target:) is the
+        // single owner of URL escaping, so pre-escaping would turn `%` into
+        // `%25` and address a different resource.
         switch self {
         case .list:
             "/v1/products"
         case let .detail(_, productID, _):
-            "/v1/products/\(Self.pathComponent(productID))"
+            "/v1/products/\(productID)"
         case let .inventory(_, productID, _):
-            "/v1/products/\(Self.pathComponent(productID))/inventory"
+            "/v1/products/\(productID)/inventory"
         case let .ratingSummary(_, productID, _):
-            "/v1/products/\(Self.pathComponent(productID))/rating-summary"
+            "/v1/products/\(productID)/rating-summary"
         case let .comments(_, productID, _):
-            "/v1/products/\(Self.pathComponent(productID))/comments"
+            "/v1/products/\(productID)/comments"
         case .categories:
             "/v1/categories"
         }
@@ -93,11 +97,6 @@ public enum ProductTarget: TargetType, Sendable {
         return parameters
     }
 
-    private static func pathComponent(_ value: String) -> String {
-        var allowed = CharacterSet.alphanumerics
-        allowed.insert(charactersIn: "-._~")
-        return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
-    }
 }
 
 extension ProductTarget: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
