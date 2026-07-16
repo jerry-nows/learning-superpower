@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -90,11 +91,11 @@ func authMigrationFS(t *testing.T) fs.FS {
 	t.Helper()
 
 	migrations := os.DirFS("../../../migrations")
-	if _, err := fs.Stat(migrations, "000001_auth.sql"); err != nil {
+	authMigration, err := fs.ReadFile(migrations, "000001_auth.sql")
+	if err != nil {
 		t.Fatalf("locate caller-supplied auth migration filesystem: %v", err)
 	}
-
-	return migrations
+	return fstest.MapFS{"000001_auth.sql": &fstest.MapFile{Data: authMigration}}
 }
 
 func assertPostgreSQLUserSchema(t *testing.T, ctx context.Context, db *sql.DB) string {

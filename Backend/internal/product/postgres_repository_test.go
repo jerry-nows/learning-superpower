@@ -66,15 +66,16 @@ func TestPostgresProductRepositoryIntegration(t *testing.T) {
 	}
 	created := time.Date(2026, 7, 16, 10, 0, 0, 0, time.UTC)
 	for _, item := range []struct {
-		id, name string
-		price    int64
-		stock    int
+		id, name    string
+		description string
+		price       int64
+		stock       int
 	}{
-		{"550e8400-e29b-41d4-a716-446655440011", "Arabica", 100, 4},
-		{"550e8400-e29b-41d4-a716-446655440012", "Robusta", 200, 8},
-		{"550e8400-e29b-41d4-a716-446655440013", "Tea", 50, 2},
+		{"550e8400-e29b-41d4-a716-446655440011", "Arabica", "Arabica beans", 100, 4},
+		{"550e8400-e29b-41d4-a716-446655440012", "Robusta", "Robusta beans", 200, 8},
+		{"550e8400-e29b-41d4-a716-446655440013", "Tea", "Tea leaves", 50, 2},
 	} {
-		if _, err := pool.Exec(ctx, `INSERT INTO products (id,category_id,name,description,price,stock,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$7)`, item.id, category, item.name, item.name+" beans", item.price, item.stock, created); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO products (id,category_id,name,description,price,stock,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$7)`, item.id, category, item.name, item.description, item.price, item.stock, created); err != nil {
 			t.Fatal(err)
 		}
 	}
