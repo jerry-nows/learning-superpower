@@ -55,8 +55,8 @@ public final class ProductResumeCoordinator: @unchecked Sendable {
     private func waitUntilOnline() async throws {
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask { [monitor] in
-                for await status in monitor.updates() {
-                    if status == .online { return }
+                for await status in monitor.updates() where status == .online {
+                    return
                 }
                 throw CancellationError()
             }

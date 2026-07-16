@@ -78,13 +78,16 @@ final class ProductListViewControllerTests: XCTestCase {
 private final class StubSource: ProductRemoteSource, @unchecked Sendable {
     let page: ProductPageResponse
     let categoryValues: [Category]
-    init(page: ProductPageResponse = .init(
-        items: [Product(id: "1", categoryID: "c", name: "Coffee", price: 10)],
-        page: 1,
-        pageSize: 20,
-        total: 1,
-        hasNext: false
-    ), categories: [Category] = []) {
+    init(
+        page: ProductPageResponse = .init(
+            items: [Product(id: "1", categoryID: "c", name: "Coffee", price: 10)],
+            page: 1,
+            pageSize: 20,
+            total: 1,
+            hasNext: false
+        ),
+        categories: [Category] = []
+    ) {
         self.page = page
         self.categoryValues = categories
     }

@@ -1,5 +1,5 @@
-import Testing
 @testable import MenuDomain
+import Testing
 
 @Test("MenuDomain module is available")
 func menuDomainModuleIsAvailable() {

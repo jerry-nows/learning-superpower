@@ -133,27 +133,19 @@ public final class ProductDetailViewModel {
     }
 
     private static func fetchProduct(source: any ProductRemoteSource, productID: String) async -> DetailFetchResult? {
-        do { return .product(.success(try await source.detail(productID: productID))) }
-        catch is CancellationError { return nil }
-        catch { return .product(.failure(message(for: error), offline: isOffline(error))) }
+        do { return .product(.success(try await source.detail(productID: productID))) } catch is CancellationError { return nil } catch { return .product(.failure(message(for: error), offline: isOffline(error))) }
     }
 
     private static func fetchReviews(source: any ProductRemoteSource, productID: String) async -> DetailFetchResult? {
-        do { return .reviews(.success(try await source.ratingSummary(productID: productID))) }
-        catch is CancellationError { return nil }
-        catch { return .reviews(.failure(message(for: error), offline: isOffline(error))) }
+        do { return .reviews(.success(try await source.ratingSummary(productID: productID))) } catch is CancellationError { return nil } catch { return .reviews(.failure(message(for: error), offline: isOffline(error))) }
     }
 
     private static func fetchComments(source: any ProductRemoteSource, productID: String) async -> DetailFetchResult? {
-        do { return .comments(.success(try await source.comments(productID: productID))) }
-        catch is CancellationError { return nil }
-        catch { return .comments(.failure(message(for: error), offline: isOffline(error))) }
+        do { return .comments(.success(try await source.comments(productID: productID))) } catch is CancellationError { return nil } catch { return .comments(.failure(message(for: error), offline: isOffline(error))) }
     }
 
     private static func fetchStock(source: any ProductRemoteSource, productID: String) async -> DetailFetchResult? {
-        do { return .stock(.success(try await source.inventory(productID: productID))) }
-        catch is CancellationError { return nil }
-        catch { return .stock(.failure(message(for: error), offline: isOffline(error))) }
+        do { return .stock(.success(try await source.inventory(productID: productID))) } catch is CancellationError { return nil } catch { return .stock(.failure(message(for: error), offline: isOffline(error))) }
     }
 
     private static func message(for error: Error) -> String {
@@ -172,7 +164,10 @@ public final class ProductDetailViewModel {
 
     private static func isOffline(_ error: Error) -> Bool {
         guard let error = error as? ProductRemoteDataSourceError else { return false }
-        switch error { case .transport, .serviceUnavailable: return true; default: return false }
+        switch error {
+        case .transport, .serviceUnavailable: return true
+        default: return false
+        }
     }
 }
 

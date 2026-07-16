@@ -110,8 +110,9 @@ public actor CoreDataProductCacheStore: ProductCacheStore {
     }
 
     private func perform<T: Sendable>(_ work: (NSManagedObjectContext) throws -> T) throws -> T {
-        var result: Result<T, Error>!
+        var result: Result<T, Error>?
         container.viewContext.performAndWait { result = Result { try work(container.viewContext) } }
+        guard let result else { throw CocoaError(.coderValueNotFound) }
         return try result.get()
     }
 }

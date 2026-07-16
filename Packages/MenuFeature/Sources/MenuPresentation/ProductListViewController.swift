@@ -1,5 +1,4 @@
 import DesignSystem
-import struct MenuDomain.Category
 import MenuDomain
 import UIKit
 

@@ -1,5 +1,5 @@
-import Testing
 @testable import MenuDomain
+import Testing
 
 @Test("product identity remains stable when display data changes")
 func productIdentityIsStable() {

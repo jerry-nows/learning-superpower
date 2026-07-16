@@ -163,35 +163,35 @@
 
 **Files:** Create `Packages/MenuFeature/Sources/MenuPresentation/ProductListViewController.swift`, tests.
 
-- [ ] Build accessible table/collection UI with pull-to-refresh, search, category/filter/sort controls, and skeleton cells.
-- [ ] Add UI tests for loading, refresh, pagination, and empty state.
-- [ ] Commit `feat(menu): add product list screen`.
+- [x] Build accessible table/collection UI with pull-to-refresh, search, category/filter/sort controls, and skeleton cells.
+- [x] Add UI tests for loading, refresh, pagination, and empty state.
+- [x] Commit `feat(menu): add product list screen`.
 
 ### Task 179 (CR-179): Product detail UIKit screen
 
 **Files:** Create `Packages/MenuFeature/Sources/MenuPresentation/ProductDetailViewController.swift`, tests.
 
-- [ ] Render product, reviews, comments, stock, and per-section skeleton/error states.
-- [ ] Add accessibility identifiers and dynamic type support.
-- [ ] Commit `feat(menu): add product detail screen`.
+- [x] Render product, reviews, comments, stock, and per-section skeleton/error states.
+- [x] Add accessibility identifiers and dynamic type support.
+- [x] Commit `feat(menu): add product detail screen`.
 
 ### Task 180 (CR-180): Menu coordinator and app route
 
 **Files:** Create `Packages/MenuFeature/Sources/MenuPresentation/MenuCoordinator.swift`; modify `Apps/CommerceApp/Sources/Composition/AppContainer.swift`, `Apps/CommerceApp/Sources/Navigation/AppCoordinator.swift`; add tests.
 
-- [ ] Expose only `MenuFlowInput` and `MenuResult` at the module boundary.
-- [ ] Wire Factory composition and route authenticated login into ProductList.
-- [ ] Add coordinator replacement and route transition tests.
-- [ ] Commit `feat(menu): wire product flow into app`.
+- [x] Expose only `MenuFlowInput` and `MenuResult` at the module boundary.
+- [x] Wire Factory composition and route authenticated login into ProductList.
+- [x] Add coordinator replacement and route transition tests.
+- [x] Commit `feat(menu): wire product flow into app`.
 
-### Task CR-181: Product API integration and CI contracts
+### Task 181 (CR-181): Product API integration and CI contracts
 
 **Files:** Create `Backend/integration/product_lifecycle_test.go`, `Infrastructure/tests/product_e2e_test.sh`, modify `.github/workflows/backend.yml`, `.github/workflows/ios.yml`.
 
-- [ ] Verify seeded list/search/detail requests against PostgreSQL and Redis-backed API startup.
-- [ ] Add CI commands for backend integration and MenuFeature tests.
-- [ ] Run Go race tests, SwiftLint, package tests, and simulator build.
-- [ ] Commit `test(product): add end-to-end menu coverage`.
+- [x] Verify seeded list/search/detail requests against PostgreSQL and Redis-backed API startup.
+- [x] Add CI commands for backend integration and MenuFeature tests.
+- [x] Run Go race tests, SwiftLint, package tests, and simulator build.
+- [x] Commit `test(product): add end-to-end menu coverage`.
 
 ## Execution Order
 

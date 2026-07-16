@@ -1,5 +1,4 @@
 import Foundation
-import struct MenuDomain.Category
 import MenuData
 import MenuDomain
 

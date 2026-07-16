@@ -57,9 +57,7 @@ func cacheHit() async throws {
 @Test("repository reports a miss when remote fails without cache")
 func cacheMiss() async {
     let repository = ProductRepository(remote: FakeRemote(result: .failure(.transport)), cache: FakeCache())
-    do { _ = try await repository.list(query: .init()); Issue.record("expected transport failure") }
-    catch let error as ProductRemoteDataSourceError { #expect(error == .transport) }
-    catch { Issue.record("unexpected error") }
+    do { _ = try await repository.list(query: .init()); Issue.record("expected transport failure") } catch let error as ProductRemoteDataSourceError { #expect(error == .transport) } catch { Issue.record("unexpected error") }
 }
 
 @Test("stale cache is returned when the network is unavailable")

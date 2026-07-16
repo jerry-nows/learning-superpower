@@ -1,5 +1,4 @@
 import Foundation
-import struct MenuDomain.Category
 import MenuDomain
 
 public enum ProductCacheFreshness: Sendable, Equatable { case fresh, stale }
@@ -84,8 +83,7 @@ public final class ProductRepository: ProductRemoteSource, @unchecked Sendable {
         fetch: @escaping @Sendable () async throws -> Value
     ) async throws -> ProductCachedValue<Value> {
         let now = clock()
-        do { return try await save(try await fetch(), key: key, now: now) }
-        catch let error where isOffline(error) {
+        do { return try await save(try await fetch(), key: key, now: now) } catch let error where isOffline(error) {
             guard let entry = try await cache.entry(for: key),
                   let value = try? JSONDecoder().decode(Value.self, from: entry.payload) else {
                 throw error
@@ -102,7 +100,10 @@ public final class ProductRepository: ProductRemoteSource, @unchecked Sendable {
     }
     private func isOffline(_ error: Error) -> Bool {
         guard let error = error as? ProductRemoteDataSourceError else { return false }
-        switch error { case .transport, .serviceUnavailable: return true; default: return false }
+        switch error {
+        case .transport, .serviceUnavailable: return true
+        default: return false
+        }
     }
     private func queryKey(_ query: ProductQuery) -> String {
         [query.search, query.categoryID ?? "",
