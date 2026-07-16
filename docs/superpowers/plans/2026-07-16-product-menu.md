@@ -175,7 +175,7 @@
 - [ ] Add accessibility identifiers and dynamic type support.
 - [ ] Commit `feat(menu): add product detail screen`.
 
-### Task CR-180: Menu coordinator and app route
+### Task 180 (CR-180): Menu coordinator and app route
 
 **Files:** Create `Packages/MenuFeature/Sources/MenuPresentation/MenuCoordinator.swift`; modify `Apps/CommerceApp/Sources/Composition/AppContainer.swift`, `Apps/CommerceApp/Sources/Navigation/AppCoordinator.swift`; add tests.
 
