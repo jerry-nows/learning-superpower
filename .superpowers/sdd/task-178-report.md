@@ -21,3 +21,11 @@ Implemented ProductList UIKit presentation source and focused XCTest coverage.
 ## Follow-up
 
 The manifest integration task must add the presentation/data targets and test target before running the XCTest suite in Xcode or `swift test`.
+
+## Review fixes
+
+- Fixed VoiceOver product-count interpolation for loaded, refreshing, and pagination states; added a loaded-state regression assertion.
+- Anchored filter and sort action sheets to their originating controls for iPad popover presentation.
+- Assigned and maintained an explicit table-header frame during initial/category-loading states so controls remain visible before categories resolve.
+
+Verification: `swiftc -parse` passes for the source and test files; `git diff --check` passes. Full XCTest execution remains dependent on MenuFeature manifest integration.

@@ -37,6 +37,20 @@ final class ProductListViewControllerTests: XCTestCase {
         XCTAssertTrue(descendants(of: controller.view, matching: UILabel.self).contains { $0.text?.contains("No products found") == true })
     }
 
+    func testLoadedStateAnnouncesProductCount() async {
+        let model = ProductListViewModel(source: StubSource())
+        let controller = ProductListViewController(viewModel: model)
+        load(controller)
+        controller.viewWillAppear(false)
+        for _ in 0..<20 {
+            if case .loaded = model.state { break }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        let table = descendants(of: controller.view, matching: UITableView.self).first
+        XCTAssertEqual(table?.accessibilityValue, "1 products")
+        controller.viewDidDisappear(false)
+    }
+
     private func load(_ controller: UIViewController) {
         controller.loadViewIfNeeded()
         controller.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844)

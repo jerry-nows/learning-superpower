@@ -15,6 +15,7 @@ public final class ProductListViewController: UIViewController {
     private let sortButton = UIButton(type: .system)
     private let emptyLabel = UILabel()
     private let refreshControl = UIRefreshControl()
+    private var headerView: UIStackView?
     private var stateTask: Task<Void, Never>?
     private var lastState: ProductListViewState?
 
@@ -84,6 +85,11 @@ public final class ProductListViewController: UIViewController {
         header.isLayoutMarginsRelativeArrangement = true
         header.layoutMargins = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
         tableView.tableHeaderView = header
+        headerView = header
+        // UITableView does not derive a tableHeaderView height from Auto Layout.
+        // Give it a visible initial frame so controls remain available while the
+        // category request is still loading (or has failed).
+        header.frame = CGRect(x: 0, y: 0, width: view.bounds.width, height: 112)
 
         emptyLabel.textAlignment = .center
         emptyLabel.numberOfLines = 0
@@ -104,6 +110,22 @@ public final class ProductListViewController: UIViewController {
             emptyLabel.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -24),
             emptyLabel.centerYAnchor.constraint(equalTo: guide.centerYAnchor)
         ])
+    }
+
+    public override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateHeaderFrame()
+    }
+
+    private func updateHeaderFrame() {
+        guard let header = headerView else { return }
+        var frame = header.frame
+        frame.size.width = tableView.bounds.width
+        frame.size.height = categoryControl.isHidden ? 112 : 152
+        if header.frame != frame {
+            header.frame = frame
+            tableView.tableHeaderView = header
+        }
     }
 
     private func configureButton(_ button: UIButton, title: String, action: Selector) {
@@ -163,19 +185,16 @@ public final class ProductListViewController: UIViewController {
         }
         categoryControl.selectedSegmentIndex = 0
         categoryControl.isHidden = categories.isEmpty
-        if var frame = tableView.tableHeaderView?.frame {
-            frame.size.height = categories.isEmpty ? 112 : 152
-            tableView.tableHeaderView?.frame = frame
-        }
+        updateHeaderFrame()
     }
 
     private func accessibilityValue(for state: ProductListViewState) -> String {
         switch state {
         case .idle: return "Ready"
         case .loading: return "Loading products"
-        case let .loaded(snapshot): return "(snapshot.items.count) products"
-        case let .refreshing(snapshot): return "Refreshing, (snapshot.items.count) products"
-        case let .loadingNextPage(snapshot): return "Loading more, (snapshot.items.count) products"
+        case let .loaded(snapshot): return "\(snapshot.items.count) products"
+        case let .refreshing(snapshot): return "Refreshing, \(snapshot.items.count) products"
+        case let .loadingNextPage(snapshot): return "Loading more, \(snapshot.items.count) products"
         case .empty: return "No products"
         case .failure: return "Unable to load products"
         }
@@ -200,6 +219,7 @@ public final class ProductListViewController: UIViewController {
             viewModel.setFilter(filter)
         })
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        configurePopover(alert, sourceView: filterButton)
         present(alert, animated: true)
     }
 
@@ -215,7 +235,14 @@ public final class ProductListViewController: UIViewController {
             alert.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in self?.viewModel.setSort(sort) })
         }
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        configurePopover(alert, sourceView: sortButton)
         present(alert, animated: true)
+    }
+
+    private func configurePopover(_ alert: UIAlertController, sourceView: UIView) {
+        guard let popover = alert.popoverPresentationController else { return }
+        popover.sourceView = sourceView
+        popover.sourceRect = sourceView.bounds
     }
 
     private var currentFilter: ProductFilter {
