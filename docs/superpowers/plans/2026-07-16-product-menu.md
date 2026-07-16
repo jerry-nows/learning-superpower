@@ -19,7 +19,7 @@
 
 ---
 
-### Task CR-162: Product backend package boundary
+### Task 162 (CR-162): Product backend package boundary
 
 **Files:** Create `Backend/internal/product/model.go`, `Backend/internal/product/model_test.go`.
 
@@ -90,7 +90,7 @@
 - [ ] Add shell contract test.
 - [ ] Commit `test(product): add deterministic product seed`.
 
-### Task CR-170: MenuFeature package manifest
+### Task 170 (CR-170): MenuFeature package manifest
 
 **Files:** Create `Packages/MenuFeature/Package.swift`, `Packages/MenuFeature/Sources/MenuDomain/MenuDomain.swift`, `Packages/MenuFeature/Tests/MenuDomainTests/MenuDomainTests.swift`.
 
