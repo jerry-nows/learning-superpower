@@ -37,6 +37,8 @@ jobs:
         run: |
           mkdir -p TestResults
           make ios-test-packages 2>&1 | tee TestResults/package-tests.log
+      - name: Test MenuFeature package
+        run: swift test --package-path Packages/MenuFeature 2>&1 | tee TestResults/menu-feature-tests.log
       - name: Generate Xcode workspace
         run: make ios-generate
       - name: Test CommerceApp
