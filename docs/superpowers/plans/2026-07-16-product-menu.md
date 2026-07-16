@@ -37,7 +37,7 @@
 - [ ] Run migration contract tests.
 - [ ] Commit `feat(product): add product schema`.
 
-### Task CR-164: Product repository contract
+### Task 164 (CR-164): Product repository contract
 
 **Files:** Create `Backend/internal/product/repository.go`, `Backend/internal/product/repository_test.go`.
 
@@ -106,7 +106,7 @@
 - [ ] Add tests for stable identity and skeleton-ready state transitions.
 - [ ] Commit `feat(menu): define product domain contracts`.
 
-### Task CR-172: Menu Moya targets
+### Task 172 (CR-172): Menu Moya targets
 
 **Files:** Create `Packages/MenuFeature/Sources/MenuData/ProductTarget.swift`, `Packages/MenuFeature/Tests/MenuDataTests/ProductTargetTests.swift`.
 
