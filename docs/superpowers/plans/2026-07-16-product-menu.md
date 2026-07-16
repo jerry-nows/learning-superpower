@@ -28,7 +28,7 @@
 - [ ] Run `cd Backend && go test ./internal/product`.
 - [ ] Commit `feat(product): define backend product contracts`.
 
-### Task CR-163: Product database migration
+### Task 163 (CR-163): Product database migration
 
 **Files:** Create `Backend/migrations/000002_product.sql`, `Backend/migrations/product_migration_contract_test.go`.
 
@@ -98,7 +98,7 @@
 - [ ] Add a compile/import contract test.
 - [ ] Commit `chore(menu): declare MenuFeature package`.
 
-### Task CR-171: Menu domain contracts
+### Task 171 (CR-171): Menu domain contracts
 
 **Files:** Create `Packages/MenuFeature/Sources/MenuDomain/ProductContracts.swift`, `Packages/MenuFeature/Tests/MenuDomainTests/ProductContractsTests.swift`.
 
