@@ -1,4 +1,4 @@
-// Command seed creates or updates the local development authentication user.
+// Command seed creates or updates the local development user and catalog.
 // Credentials are intentionally accepted only through the environment.
 package main
 
@@ -21,6 +21,42 @@ import (
 const upsertUserSQL = `INSERT INTO users (email, password_hash, status, created_at, updated_at)
 VALUES ($1, $2, 'active', NOW(), NOW())
 ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, status = 'active', updated_at = NOW()`
+
+// Fixed UUIDs make local fixtures stable across restarts. The seed only writes
+// non-sensitive demo catalog data; credentials remain environment-only.
+type catalogCategory struct {
+	id   string
+	name string
+	slug string
+}
+
+type catalogProduct struct {
+	id, categoryID, name, description, imageURL string
+	price, stock                                int64
+}
+
+var seedCategories = []catalogCategory{
+	{id: "00000000-0000-4000-8000-000000000001", name: "Electronics", slug: "electronics"},
+	{id: "00000000-0000-4000-8000-000000000002", name: "Home & Living", slug: "home-living"},
+	{id: "00000000-0000-4000-8000-000000000003", name: "Fashion", slug: "fashion"},
+}
+
+var seedProducts = []catalogProduct{
+	{id: "00000000-0000-4000-8000-000000000101", categoryID: seedCategories[0].id, name: "Wireless Headphones", description: "Noise-isolating Bluetooth headphones", price: 1299000, stock: 42, imageURL: "https://example.invalid/products/wireless-headphones.jpg"},
+	{id: "00000000-0000-4000-8000-000000000102", categoryID: seedCategories[0].id, name: "USB-C Hub", description: "Six-port aluminium USB-C hub", price: 699000, stock: 18, imageURL: "https://example.invalid/products/usb-c-hub.jpg"},
+	{id: "00000000-0000-4000-8000-000000000201", categoryID: seedCategories[1].id, name: "Ceramic Coffee Set", description: "Hand-finished cups for everyday coffee", price: 459000, stock: 25, imageURL: "https://example.invalid/products/ceramic-coffee-set.jpg"},
+	{id: "00000000-0000-4000-8000-000000000202", categoryID: seedCategories[1].id, name: "Linen Throw Pillow", description: "Soft natural linen cushion cover", price: 219000, stock: 31, imageURL: "https://example.invalid/products/linen-throw-pillow.jpg"},
+	{id: "00000000-0000-4000-8000-000000000301", categoryID: seedCategories[2].id, name: "Everyday Canvas Tote", description: "Reusable cotton canvas tote bag", price: 159000, stock: 64, imageURL: "https://example.invalid/products/canvas-tote.jpg"},
+	{id: "00000000-0000-4000-8000-000000000302", categoryID: seedCategories[2].id, name: "Classic Cotton Cap", description: "Breathable cotton cap with adjustable strap", price: 189000, stock: 37, imageURL: "https://example.invalid/products/cotton-cap.jpg"},
+}
+
+const upsertCategorySQL = `INSERT INTO categories (id, name, slug, created_at, updated_at)
+VALUES ($1, $2, $3, NOW(), NOW())
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug, updated_at = NOW()`
+
+const upsertProductSQL = `INSERT INTO products (id, category_id, name, description, price, currency, stock, status, image_url, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, 'VND', $6, 'active', $7, NOW(), NOW())
+ON CONFLICT (id) DO UPDATE SET category_id = EXCLUDED.category_id, name = EXCLUDED.name, description = EXCLUDED.description, price = EXCLUDED.price, currency = EXCLUDED.currency, stock = EXCLUDED.stock, status = 'active', image_url = EXCLUDED.image_url, updated_at = NOW()`
 
 var errSeedRetryable = errors.New("seed database is not ready")
 
@@ -110,9 +146,27 @@ func run(ctx context.Context, getenv func(string) string, _ io.Writer, errOut io
 		writeGeneric(errOut)
 		return errors.New("password hashing failed")
 	}
+	if err := seedCatalog(ctx, db); err != nil {
+		writeGeneric(errOut)
+		return fmt.Errorf("%w: catalog seed failed", errSeedRetryable)
+	}
 	if _, err = db.Exec(ctx, upsertUserSQL, normalized, hash); err != nil {
 		writeGeneric(errOut)
 		return fmt.Errorf("%w: user seed failed", errSeedRetryable)
+	}
+	return nil
+}
+
+func seedCatalog(ctx context.Context, db seedDB) error {
+	for _, category := range seedCategories {
+		if _, err := db.Exec(ctx, upsertCategorySQL, category.id, category.name, category.slug); err != nil {
+			return err
+		}
+	}
+	for _, product := range seedProducts {
+		if _, err := db.Exec(ctx, upsertProductSQL, product.id, product.categoryID, product.name, product.description, product.price, product.stock, product.imageURL); err != nil {
+			return err
+		}
 	}
 	return nil
 }
