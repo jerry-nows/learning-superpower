@@ -25,7 +25,7 @@ struct AppCoordinatorTests {
     func authenticatedRoutePresentsProducts() async throws {
         let coordinator = AppCoordinator()
 
-        coordinator.strongRouter.trigger(.authenticated)
+        await coordinator.strongRouter.trigger(.authenticated)
         try await Task.sleep(for: .milliseconds(100))
 
         let productList = coordinator.rootViewController.viewControllers.first
