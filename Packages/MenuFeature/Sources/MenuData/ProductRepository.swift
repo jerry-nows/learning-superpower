@@ -62,12 +62,26 @@ public final class ProductRepository: ProductRemoteSource, @unchecked Sendable {
             try await remote.comments(productID: productID)
         }
     }
-    public func categoriesValue() async throws -> ProductCachedValue<[Category]> { try await load(key: "categories", decode: [Category].self) { try await remote.categories() } }
+    public func categoriesValue() async throws -> ProductCachedValue<[Category]> {
+        try await load(key: "categories", decode: [Category].self) {
+            try await remote.categories()
+        }
+    }
 
     public func invalidateList(query: ProductQuery) async throws { try await cache.invalidate(key: "list:\(queryKey(query))") }
-    public func invalidateProduct(productID: String) async throws { for key in ["detail:\(productID)", "inventory:\(productID)", "rating:\(productID)", "comments:\(productID)"] { try await cache.invalidate(key: key) } }
+    public func invalidateProduct(productID: String) async throws {
+        let keys = [
+            "detail:\(productID)", "inventory:\(productID)",
+            "rating:\(productID)", "comments:\(productID)"
+        ]
+        for key in keys { try await cache.invalidate(key: key) }
+    }
 
-    private func load<Value: Codable & Sendable & Equatable>(key: String, decode: Value.Type, fetch: @escaping @Sendable () async throws -> Value) async throws -> ProductCachedValue<Value> {
+    private func load<Value: Codable & Sendable & Equatable>(
+        key: String,
+        decode: Value.Type,
+        fetch: @escaping @Sendable () async throws -> Value
+    ) async throws -> ProductCachedValue<Value> {
         let now = clock()
         if let entry = try await cache.entry(for: key), let value = try? JSONDecoder().decode(Value.self, from: entry.payload) {
             let freshness: ProductCacheFreshness = now.timeIntervalSince(entry.cachedAt) <= freshnessInterval ? .fresh : .stale
@@ -88,5 +102,12 @@ public final class ProductRepository: ProductRemoteSource, @unchecked Sendable {
         guard let error = error as? ProductRemoteDataSourceError else { return false }
         switch error { case .transport, .serviceUnavailable: return true; default: return false }
     }
-    private func queryKey(_ query: ProductQuery) -> String { [query.search, query.categoryID ?? "", query.filter.minimumPrice.map(String.init) ?? "", query.filter.maximumPrice.map(String.init) ?? "", String(query.filter.inStockOnly), query.sort.rawValue, query.pagination.cursor ?? "", String(query.pagination.pageSize)].joined(separator: "|") }
+    private func queryKey(_ query: ProductQuery) -> String {
+        [query.search, query.categoryID ?? "",
+         query.filter.minimumPrice.map(String.init) ?? "",
+         query.filter.maximumPrice.map(String.init) ?? "",
+         String(query.filter.inStockOnly), query.sort.rawValue,
+         query.pagination.cursor ?? "", String(query.pagination.pageSize)]
+            .joined(separator: "|")
+    }
 }

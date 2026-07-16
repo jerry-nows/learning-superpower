@@ -21,7 +21,10 @@ private struct FakeRemote: ProductRemoteSource {
     func categories() async throws -> [Category] { fatalError() }
 }
 
-private let page = ProductPageResponse(items: [Product(id: "p1", categoryID: "c1", name: "Coffee", price: 100)], page: 1, pageSize: 20, total: 1, hasNext: false)
+private let page = ProductPageResponse(
+    items: [Product(id: "p1", categoryID: "c1", name: "Coffee", price: 100)],
+    page: 1, pageSize: 20, total: 1, hasNext: false
+)
 
 @Test("repository caches network response and serves a cache hit")
 func cacheHit() async throws {
@@ -45,7 +48,10 @@ func staleFallback() async throws {
     let cache = FakeCache()
     let old = ProductCacheEntry(payload: try JSONEncoder().encode(page), cachedAt: Date(timeIntervalSince1970: 1))
     try await cache.save(old, for: "list:||||false|newest||20")
-    let repository = ProductRepository(remote: FakeRemote(result: .failure(.transport)), cache: cache, freshnessInterval: 10, clock: { Date(timeIntervalSince1970: 100) })
+    let repository = ProductRepository(
+        remote: FakeRemote(result: .failure(.transport)), cache: cache,
+        freshnessInterval: 10, clock: { Date(timeIntervalSince1970: 100) }
+    )
     let result = try await repository.listValue(query: .init())
     #expect(result.value == page); #expect(result.freshness == .stale)
 }
