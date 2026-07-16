@@ -1,4 +1,5 @@
 import Foundation
+import struct MenuDomain.Category
 import MenuDomain
 
 public enum ProductCacheFreshness: Sendable, Equatable { case fresh, stale }
@@ -40,31 +41,31 @@ public final class ProductRepository: ProductRemoteSource, @unchecked Sendable {
     public func categories() async throws -> [Category] { try await categoriesValue().value }
 
     public func listValue(query: ProductQuery) async throws -> ProductCachedValue<ProductPageResponse> {
-        try await load(key: "list:\(queryKey(query))", decode: ProductPageResponse.self) { try await remote.list(query: query) }
+        try await load(key: "list:\(queryKey(query))", decode: ProductPageResponse.self) { try await self.remote.list(query: query) }
     }
     public func detailValue(productID: String) async throws -> ProductCachedValue<Product> {
         try await load(key: "detail:\(productID)", decode: Product.self) {
-            try await remote.detail(productID: productID)
+            try await self.remote.detail(productID: productID)
         }
     }
     public func inventoryValue(productID: String) async throws -> ProductCachedValue<ProductStock> {
         try await load(key: "inventory:\(productID)", decode: ProductStock.self) {
-            try await remote.inventory(productID: productID)
+            try await self.remote.inventory(productID: productID)
         }
     }
     public func ratingValue(productID: String) async throws -> ProductCachedValue<ProductRatingSummary> {
         try await load(key: "rating:\(productID)", decode: ProductRatingSummary.self) {
-            try await remote.ratingSummary(productID: productID)
+            try await self.remote.ratingSummary(productID: productID)
         }
     }
     public func commentsValue(productID: String) async throws -> ProductCachedValue<[ProductComment]> {
         try await load(key: "comments:\(productID)", decode: [ProductComment].self) {
-            try await remote.comments(productID: productID)
+            try await self.remote.comments(productID: productID)
         }
     }
     public func categoriesValue() async throws -> ProductCachedValue<[Category]> {
         try await load(key: "categories", decode: [Category].self) {
-            try await remote.categories()
+            try await self.remote.categories()
         }
     }
 

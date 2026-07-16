@@ -1,4 +1,5 @@
 import DesignSystem
+import struct MenuDomain.Category
 import MenuDomain
 import UIKit
 
@@ -258,7 +259,8 @@ extension ProductListViewController: UITableViewDataSource, UITableViewDelegate 
         switch viewModel.state {
         case .loading: return 5
         case let .loaded(snapshot), let .refreshing(snapshot), let .loadingNextPage(snapshot): return snapshot.items.count + snapshot.nextPageSkeletonCount
-        case let .empty(snapshot), let .failure(snapshot, _): return snapshot?.items.count ?? 0
+        case let .empty(snapshot): return snapshot.items.count
+        case let .failure(snapshot, _): return snapshot?.items.count ?? 0
         case .idle: return 0
         }
     }
@@ -274,7 +276,15 @@ extension ProductListViewController: UITableViewDataSource, UITableViewDelegate 
             }
             cell.configure(product: snapshot.items[indexPath.row])
             return cell
-        case let .empty(snapshot), let .failure(snapshot, _):
+        case let .empty(snapshot):
+            guard indexPath.row < snapshot.items.count else { return UITableViewCell() }
+            let product = snapshot.items[indexPath.row]
+            guard let cell = tableView.dequeueReusableCell(withIdentifier: ProductCell.reuseIdentifier, for: indexPath) as? ProductCell else {
+                return UITableViewCell()
+            }
+            cell.configure(product: product)
+            return cell
+        case let .failure(snapshot, _):
             guard let product = snapshot?.items[indexPath.row] else { return UITableViewCell() }
             guard let cell = tableView.dequeueReusableCell(withIdentifier: ProductCell.reuseIdentifier, for: indexPath) as? ProductCell else {
                 return UITableViewCell()

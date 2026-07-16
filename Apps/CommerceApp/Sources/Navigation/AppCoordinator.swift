@@ -1,5 +1,6 @@
 import DesignSystem
 import LoginPresentation
+import MenuPresentation
 import UIKit
 @preconcurrency import XCoordinator
 
@@ -43,26 +44,8 @@ final class AppCoordinator: NavigationCoordinator<AppRoute>, ApplicationCoordina
             case .authenticated:
                 // Replace the login stack so authenticated users cannot back
                 // navigate into a completed credential flow.
-                return .set([AuthenticatedPlaceholderViewController()])
+                return .set([AppContainer.shared.makeMenuCoordinator().makeViewController()])
             }
         }
-    }
-}
-
-@MainActor
-private final class AuthenticatedPlaceholderViewController: UIViewController {
-    init() {
-        super.init(nibName: nil, bundle: nil)
-        title = "Products"
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        nil
-    }
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = ColorToken.backgroundPrimary.color
     }
 }

@@ -57,7 +57,9 @@ public actor CoreDataProductCacheStore: ProductCacheStore {
         if let loadError {
             fatalError("Unable to load product cache: \(loadError)")
         }
-        container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        container.viewContext.mergePolicy = NSMergePolicy(
+            merge: .mergeByPropertyObjectTrumpMergePolicyType
+        )
         container.viewContext.undoManager = nil
     }
 

@@ -1,4 +1,5 @@
 import LoginPresentation
+import MenuPresentation
 import Testing
 import UIKit
 
@@ -18,5 +19,18 @@ struct AppCoordinatorTests {
         #expect(loginViewController is LoginViewController)
         loginViewController?.loadViewIfNeeded()
         #expect(loginViewController?.title == "Sign in")
+    }
+
+    @Test("authenticated route replaces login with product list")
+    func authenticatedRoutePresentsProducts() async throws {
+        let coordinator = AppCoordinator()
+
+        coordinator.strongRouter.trigger(.authenticated)
+        try await Task.sleep(for: .milliseconds(100))
+
+        let productList = coordinator.rootViewController.viewControllers.first
+        #expect(productList is ProductListViewController)
+        productList?.loadViewIfNeeded()
+        #expect(productList?.title == "Products")
     }
 }
