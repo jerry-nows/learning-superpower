@@ -84,7 +84,7 @@ func TestPostgresProductRepositoryIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	page, err := repo.List(ctx, ProductQuery{Page: 1, PageSize: 2, Search: "bean", CategoryID: category, Sort: ProductSortPriceDescending})
-	if err != nil || page.Total != 2 || len(page.Items) != 2 || page.Items[0].Name != "Robusta" || !page.HasNext {
+	if err != nil || page.Total != 2 || len(page.Items) != 2 || page.Items[0].Name != "Robusta" || page.HasNext {
 		t.Fatalf("filtered page = %#v, err %v", page, err)
 	}
 	page, err = repo.List(ctx, ProductQuery{Page: 1, PageSize: 1, Sort: ProductSortPriceAscending})
