@@ -11,6 +11,25 @@ private actor FakeCache: ProductCacheStore {
     func removeAll() async throws { values.removeAll() }
 }
 
+@Test("network response wins over a fresh cache entry")
+func networkWinsOverFreshCache() async throws {
+    let cache = FakeCache()
+    let cachedPage = ProductPageResponse(
+        items: [Product(id: "cached", categoryID: "c1", name: "Cached", price: 1)],
+        page: 1, pageSize: 20, total: 1, hasNext: false
+    )
+    try await cache.save(
+        ProductCacheEntry(payload: try JSONEncoder().encode(cachedPage), cachedAt: Date()),
+        for: "list:||||false|newest||20"
+    )
+    let repository = ProductRepository(
+        remote: FakeRemote(result: .success(page)), cache: cache
+    )
+    let result = try await repository.listValue(query: .init())
+    #expect(result.value == page)
+    #expect(result.freshness == .fresh)
+}
+
 private struct FakeRemote: ProductRemoteSource {
     var result: Result<ProductPageResponse, ProductRemoteDataSourceError>
     func list(query: ProductQuery) async throws -> ProductPageResponse { try result.get() }

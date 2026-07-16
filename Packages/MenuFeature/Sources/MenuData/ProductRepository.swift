@@ -83,14 +83,15 @@ public final class ProductRepository: ProductRemoteSource, @unchecked Sendable {
         fetch: @escaping @Sendable () async throws -> Value
     ) async throws -> ProductCachedValue<Value> {
         let now = clock()
-        if let entry = try await cache.entry(for: key), let value = try? JSONDecoder().decode(Value.self, from: entry.payload) {
-            let freshness: ProductCacheFreshness = now.timeIntervalSince(entry.cachedAt) <= freshnessInterval ? .fresh : .stale
-            if freshness == .fresh { return ProductCachedValue(value: value, cachedAt: entry.cachedAt, freshness: freshness) }
-            do { let fresh = try await fetch(); return try await save(fresh, key: key, now: now) }
-            catch let error where isOffline(error) { return ProductCachedValue(value: value, cachedAt: entry.cachedAt, freshness: .stale) }
-        }
         do { return try await save(try await fetch(), key: key, now: now) }
-        catch { throw error }
+        catch let error where isOffline(error) {
+            guard let entry = try await cache.entry(for: key),
+                  let value = try? JSONDecoder().decode(Value.self, from: entry.payload) else {
+                throw error
+            }
+            let freshness: ProductCacheFreshness = now.timeIntervalSince(entry.cachedAt) <= freshnessInterval ? .fresh : .stale
+            return ProductCachedValue(value: value, cachedAt: entry.cachedAt, freshness: freshness)
+        }
     }
 
     private func save<Value: Codable & Sendable & Equatable>(_ value: Value, key: String, now: Date) async throws -> ProductCachedValue<Value> {
