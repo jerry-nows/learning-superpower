@@ -39,6 +39,11 @@ jobs:
         run: staticcheck ./...
       - name: Run tests with race detection and coverage
         run: go test -race -coverprofile=coverage.out ./...
+      - name: Run product integration tests
+        run: go test -race ./integration -run TestProductLifecycleEndToEnd -count=1
+      - name: Verify product e2e contract
+        working-directory: .
+        run: Infrastructure/tests/product_e2e_test.sh
       - name: Upload backend coverage
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

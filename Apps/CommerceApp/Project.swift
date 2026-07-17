@@ -9,6 +9,7 @@ let project = Project(
         .local(path: "../../Packages/LoginFeature"),
         .local(path: "../../Packages/Security"),
         .local(path: "../../Packages/Networking"),
+        .local(path: "../../Packages/MenuFeature"),
         .remote(
             url: "https://github.com/hmlongco/Factory.git",
             requirement: .upToNextMajor(from: "3.3.1")
@@ -42,6 +43,7 @@ let project = Project(
                 .package(product: "LoginFeature"),
                 .package(product: "SecurityKit"),
                 .package(product: "Networking"),
+                .package(product: "MenuFeature"),
                 .package(product: "FactoryKit"),
                 .package(product: "XCoordinator")
             ]

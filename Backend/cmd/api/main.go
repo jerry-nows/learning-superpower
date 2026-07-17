@@ -21,6 +21,7 @@ import (
 	"github.com/vominhtri1049/learning-superpower/backend/internal/health"
 	"github.com/vominhtri1049/learning-superpower/backend/internal/platform/httpapi"
 	"github.com/vominhtri1049/learning-superpower/backend/internal/platform/migration"
+	"github.com/vominhtri1049/learning-superpower/backend/internal/product"
 )
 
 type apiConfig struct {
@@ -153,7 +154,12 @@ func buildApplication(ctx context.Context, cfg apiConfig, deps startupDependenci
 		return nil, errors.New("auth service startup failed")
 	}
 	handler := auth.NewHandler(service, issuer)
-	server := &http.Server{Addr: ":" + cfg.port, Handler: httpapi.NewRouter(health.NewHandler(), handler), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
+	products, err := product.NewPostgresProductRepository(p)
+	if err != nil {
+		return nil, errors.New("product repository startup failed")
+	}
+	productHandler := product.NewHandler(products, issuer)
+	server := &http.Server{Addr: ":" + cfg.port, Handler: httpapi.NewRouter(health.NewHandler(), handler, productHandler), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
 	a.server = server
 	cleanup = false
 	return a, nil

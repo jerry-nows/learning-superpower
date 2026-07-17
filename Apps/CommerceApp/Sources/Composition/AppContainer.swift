@@ -3,6 +3,9 @@ import Foundation
 import LoginData
 import LoginDomain
 import LoginPresentation
+import MenuData
+import MenuDomain
+import MenuPresentation
 import Networking
 import SecurityKit
 import UIKit
@@ -59,6 +62,32 @@ extension Container {
         }}
     }
 
+    var productRemoteSource: Factory<any ProductRemoteSource> {
+        self {
+            let accessToken = try? self.tokenStore().load()?.accessToken
+            return ProductRemoteDataSource(baseURL: self.apiBaseURL(), accessToken: accessToken)
+        }.singleton
+    }
+
+    var productCacheStore: Factory<any ProductCacheStore> {
+        self { CoreDataProductCacheStore() }.singleton
+    }
+
+    var productRepository: Factory<any ProductRemoteSource> {
+        self {
+            ProductRepository(
+                remote: self.productRemoteSource(),
+                cache: self.productCacheStore()
+            )
+        }.singleton
+    }
+
+    var menuCoordinator: Factory<MenuViewModelFactory> {
+        self { { _, source in
+            ProductListViewModel(source: source)
+        }}
+    }
+
     var appCoordinator: Factory<any ApplicationCoordinating> {
         self { AppCoordinator() }.singleton
     }
@@ -72,6 +101,14 @@ extension Container {
             input: input,
             authenticator: loginAuthenticator(),
             viewModelFactory: loginCoordinator()
+        )
+    }
+
+    func makeMenuCoordinator(input: MenuFlowInput = .init()) -> MenuCoordinator {
+        MenuCoordinator(
+            input: input,
+            source: productRepository(),
+            viewModelFactory: menuCoordinator()
         )
     }
 }
