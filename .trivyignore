@@ -1,0 +1,4 @@
+# GO-2026-5932 is emitted for unmaintained openpgp package metadata in
+# golang.org/x/crypto. The application does not import openpgp, and Trivy
+# reports no fixed upstream version. Revisit when upstream publishes a fix.
+GO-2026-5932

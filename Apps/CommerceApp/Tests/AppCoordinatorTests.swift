@@ -1,3 +1,5 @@
+import LoginPresentation
+import MenuPresentation
 import Testing
 import UIKit
 
@@ -6,17 +8,6 @@ import UIKit
 @MainActor
 @Suite("AppCoordinator")
 struct AppCoordinatorTests {
-    @Test("start presents the injected child flow controller")
-    func startPresentsInjectedChildFlow() async throws {
-        let childFlow = ChildFlowSpy()
-        let coordinator = AppCoordinator(loginFlowFactory: { childFlow })
-
-        coordinator.start()
-        try await Task.sleep(for: .milliseconds(100))
-
-        #expect(coordinator.rootViewController.viewControllers.first === childFlow.rootViewController)
-    }
-
     @Test("start presents the login entry screen")
     func startPresentsLogin() async throws {
         let coordinator = AppCoordinator()
@@ -24,11 +15,22 @@ struct AppCoordinatorTests {
         coordinator.start()
         try await Task.sleep(for: .milliseconds(100))
 
-        #expect(coordinator.rootViewController.viewControllers.first?.title == "Sign in")
+        let loginViewController = coordinator.rootViewController.viewControllers.first
+        #expect(loginViewController is LoginViewController)
+        loginViewController?.loadViewIfNeeded()
+        #expect(loginViewController?.title == "Sign in")
     }
-}
 
-@MainActor
-private final class ChildFlowSpy: ApplicationChildFlow {
-    let rootViewController = UIViewController()
+    @Test("authenticated route replaces login with product list")
+    func authenticatedRoutePresentsProducts() async throws {
+        let coordinator = AppCoordinator()
+
+        await coordinator.strongRouter.trigger(.authenticated)
+        try await Task.sleep(for: .milliseconds(100))
+
+        let productList = coordinator.rootViewController.viewControllers.first
+        #expect(productList is ProductListViewController)
+        productList?.loadViewIfNeeded()
+        #expect(productList?.title == "Products")
+    }
 }

@@ -52,6 +52,17 @@ assert_target_contains ci-security 'detect --source=/repo'
 assert_target_contains ci-security 'aquasec/trivy:0.66.0'
 assert_target_contains ci-security 'fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 /repo'
 
+assert_target_contains migrate 'docker compose --env-file'
+assert_target_contains migrate 'up --build --wait api'
+assert_target_contains seed 'run --rm --no-deps -T seed'
+assert_target_contains auth-e2e 'Infrastructure/scripts/auth-e2e.sh'
+assert_target_contains auth-e2e 'ENV_FILE='
+
+make_targets_database="$(make --no-print-directory -C "$repo_root" -f "$makefile_path" -np auth-e2e 2>/dev/null)" \
+  || fail 'unable to inspect auth-e2e dependency graph'
+grep -Eq '^auth-e2e:([[:space:]]+migrate)([[:space:]]+seed)([[:space:]]|$)' \
+  <<<"$make_targets_database" || fail 'auth-e2e must depend on migrate and seed'
+
 ci_all_database="$(make --no-print-directory -C "$repo_root" -f "$makefile_path" -np ci-all 2>/dev/null)" \
   || fail 'unable to inspect ci-all dependency graph'
 grep -Eq '^ci-all:([[:space:]]+ci-validate)([[:space:]]+ci-backend)([[:space:]]+ci-ios)([[:space:]]+ci-security)([[:space:]]|$)' \
