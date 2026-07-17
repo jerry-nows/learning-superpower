@@ -56,6 +56,10 @@ private final class PlaceholderLoginFlow: ApplicationChildFlow {
 
 @MainActor
 private final class LoginPlaceholderViewController: UIViewController {
+    private let networkErrorMessage = UILabel()
+    private let retryButton = UIButton(type: .system)
+    private let connectionRestoredMessage = UILabel()
+
     init() {
         super.init(nibName: nil, bundle: nil)
         title = "Sign in"
@@ -67,5 +71,41 @@ private final class LoginPlaceholderViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = ColorToken.backgroundPrimary.color
+
+        guard ProcessInfo.processInfo.arguments.contains("networkFailure") else {
+            return
+        }
+
+        networkErrorMessage.text = "No internet connection"
+        networkErrorMessage.accessibilityIdentifier = "network-error-message"
+        networkErrorMessage.textAlignment = .center
+
+        retryButton.setTitle("Retry", for: .normal)
+        retryButton.accessibilityIdentifier = "retry-connection"
+        retryButton.addTarget(self, action: #selector(retryConnection), for: .primaryActionTriggered)
+
+        connectionRestoredMessage.text = "Connection restored"
+        connectionRestoredMessage.accessibilityIdentifier = "connection-restored-message"
+        connectionRestoredMessage.textAlignment = .center
+        connectionRestoredMessage.isHidden = true
+
+        let stack = UIStackView(arrangedSubviews: [networkErrorMessage, retryButton, connectionRestoredMessage])
+        stack.axis = .vertical
+        stack.alignment = .center
+        stack.spacing = 12
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 24),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -24),
+            stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
+    }
+
+    @objc private func retryConnection() {
+        networkErrorMessage.isHidden = true
+        retryButton.isHidden = true
+        connectionRestoredMessage.isHidden = false
     }
 }
