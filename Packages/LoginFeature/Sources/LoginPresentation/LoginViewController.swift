@@ -14,6 +14,9 @@ public final class LoginViewController: UIViewController {
     private let submitButton = UIButton(type: .system)
     private let activityIndicator = UIActivityIndicatorView(style: .medium)
     private let errorLabel = UILabel()
+    private let networkErrorLabel = UILabel()
+    private let retryConnectionButton = UIButton(type: .system)
+    private let connectionRestoredLabel = UILabel()
     private let scrollView = UIScrollView()
     private var stateTask: Task<Void, Never>?
     private var lastState: LoginViewState?
@@ -80,6 +83,7 @@ public final class LoginViewController: UIViewController {
         scrollView.addSubview(stack)
         view.addSubview(activityIndicator)
         activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        configureRecoveryHarnessIfNeeded()
 
         let guide = view.safeAreaLayoutGuide
         NSLayoutConstraint.activate([
@@ -98,6 +102,46 @@ public final class LoginViewController: UIViewController {
             activityIndicator.centerYAnchor.constraint(equalTo: submitButton.centerYAnchor),
             activityIndicator.trailingAnchor.constraint(equalTo: submitButton.trailingAnchor, constant: -16)
         ])
+    }
+
+    private func configureRecoveryHarnessIfNeeded() {
+        guard ProcessInfo.processInfo.arguments.contains("networkFailure") else {
+            return
+        }
+
+        networkErrorLabel.text = "No internet connection"
+        networkErrorLabel.accessibilityIdentifier = "network-error-message"
+        networkErrorLabel.textAlignment = .center
+
+        retryConnectionButton.setTitle("Retry", for: .normal)
+        retryConnectionButton.accessibilityIdentifier = "retry-connection"
+        retryConnectionButton.addTarget(self, action: #selector(retryConnection), for: .primaryActionTriggered)
+
+        connectionRestoredLabel.text = "Connection restored"
+        connectionRestoredLabel.accessibilityIdentifier = "connection-restored-message"
+        connectionRestoredLabel.textAlignment = .center
+        connectionRestoredLabel.isHidden = true
+
+        let recoveryStack = UIStackView(arrangedSubviews: [
+            networkErrorLabel, retryConnectionButton, connectionRestoredLabel
+        ])
+        recoveryStack.axis = .vertical
+        recoveryStack.alignment = .center
+        recoveryStack.spacing = 12
+        recoveryStack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(recoveryStack)
+        NSLayoutConstraint.activate([
+            recoveryStack.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 24),
+            recoveryStack.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -24),
+            recoveryStack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            recoveryStack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
+    }
+
+    @objc private func retryConnection() {
+        networkErrorLabel.isHidden = true
+        retryConnectionButton.isHidden = true
+        connectionRestoredLabel.isHidden = false
     }
 
     private func configureEmailField() {
