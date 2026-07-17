@@ -6,6 +6,11 @@ import UIKit
 @MainActor
 @Suite("AppContainer")
 struct AppContainerTests {
+    @Test("app delegate is created on the main actor")
+    func appDelegateIsMainActorIsolated() {
+        _ = AppDelegate()
+    }
+
     @Test("composition root permits coordinator replacement")
     func coordinatorCanBeReplaced() {
         let replacement = CoordinatorSpy()
