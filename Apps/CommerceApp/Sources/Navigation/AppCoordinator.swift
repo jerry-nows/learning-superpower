@@ -7,10 +7,19 @@ enum AppRoute: Route {
 }
 
 @MainActor
+protocol ApplicationChildFlow: AnyObject {
+    var rootViewController: UIViewController { get }
+}
+
+typealias ApplicationChildFlowFactory = @MainActor () -> any ApplicationChildFlow
+
+@MainActor
 final class AppCoordinator: NavigationCoordinator<AppRoute>, ApplicationCoordinating {
+    private let loginFlowFactory: ApplicationChildFlowFactory
     private var hasStarted = false
 
-    init() {
+    init(loginFlowFactory: @escaping ApplicationChildFlowFactory = { PlaceholderLoginFlow() }) {
+        self.loginFlowFactory = loginFlowFactory
         super.init(rootViewController: UINavigationController(), initialRoute: nil)
     }
 
@@ -26,12 +35,22 @@ final class AppCoordinator: NavigationCoordinator<AppRoute>, ApplicationCoordina
     override func prepareTransition(for route: AppRoute) -> NavigationTransition {
         // XCoordinator's synchronous route API predates Swift actor annotations.
         // UIKit navigation invokes this hook on the main thread; assert that invariant at runtime.
-        MainActor.assumeIsolated {
+        MainActor.assumeIsolated { [loginFlowFactory] in
             switch route {
             case .login:
-                .push(LoginPlaceholderViewController())
+                let loginFlow = loginFlowFactory()
+                return .push(loginFlow.rootViewController)
             }
         }
+    }
+}
+
+@MainActor
+private final class PlaceholderLoginFlow: ApplicationChildFlow {
+    let rootViewController: UIViewController
+
+    init() {
+        rootViewController = LoginPlaceholderViewController()
     }
 }
 
@@ -43,9 +62,7 @@ private final class LoginPlaceholderViewController: UIViewController {
     }
 
     @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        nil
-    }
+    required init?(coder: NSCoder) { nil }
 
     override func viewDidLoad() {
         super.viewDidLoad()

@@ -4,7 +4,7 @@
 
 **Goal:** Harden UIKit main-actor isolation, add a replaceable AppCoordinator child-flow seam, and add a deterministic UI failure/recovery harness without duplicating future LoginFeature or offline-recovery CRs.
 
-**Architecture:** `AppCoordinator` owns an internal child-flow protocol and factory seam; the current placeholder flow implements that seam and remains replaceable by CR-048/CR-054. A launch-argument scenario drives only placeholder UI diagnostics; CR-102 remains responsible for production recovery logic.
+**Architecture:** `AppCoordinator` owns an internal child-flow protocol and factory seam; the current placeholder flow implements that seam and remains replaceable by CR-048/CR-054. XCoordinator owns the exported child view controller lifecycle. A launch-argument scenario drives only placeholder UI diagnostics; CR-102 remains responsible for production recovery logic.
 
 **Tech Stack:** Swift 6 strict concurrency, UIKit, XCoordinator, XCTest/Swift Testing, Tuist-generated Xcode project.
 
@@ -66,4 +66,3 @@
 - [ ] Generate the CommerceApp workspace with the repository’s pinned Tuist command.
 - [ ] Run CommerceApp unit tests, UI tests, and SwiftLint using the existing Makefile targets.
 - [ ] Confirm the worktree is clean except for committed changes and record the exact test results.
-

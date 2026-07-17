@@ -11,8 +11,9 @@ contract (CR-048/CR-054) and production offline recovery (CR-102).
 ## Architecture
 
 - `AppDelegate` and all UIKit lifecycle/coordinator types are `@MainActor`.
-- `AppCoordinator` exposes a child-flow factory seam and retains the produced
-  child flow, but does not introduce a second LoginFeature contract.
+- `AppCoordinator` exposes a child-flow factory seam and gives XCoordinator
+  the exported child view controller, but does not introduce a second
+  LoginFeature contract.
 - The current placeholder remains behind that seam and will be replaced by
   CR-048/CR-054 when the Login SPM module is implemented.
 
